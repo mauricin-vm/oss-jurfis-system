@@ -111,7 +111,7 @@ export default function ChatPage() {
       console.log(`📡 Carregando chats da API (tentativa ${attempt}/${maxAttempts})...`);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
       const response = await fetch(`/api/chat/chats?page=${page}&limit=20`, {
         signal: controller.signal
@@ -770,40 +770,68 @@ export default function ChatPage() {
     return cleanup;
   }, [getPresence]);
 
-  // === CARREGAR FOTOS DE PERFIL ===
-  const profilePicRequests = useRef<Set<string>>(new Set());
+  // === CARREGAR DADOS DO SIDEBAR (FOTOS DE PERFIL + ÚLTIMA MENSAGEM) ===
+  const sidebarDataRequests = useRef<Set<string>>(new Set());
+  const [sidebarData, setSidebarData] = useState<Record<string, { profilePic: string | null, lastMessage: any }>>({});
 
-  const fetchProfilePic = useCallback(async (chatId: string) => {
-    if (profilePics[chatId] || profilePicRequests.current.has(chatId)) return;
+  const fetchSidebarData = useCallback(async (chatId: string, lastMessageId?: string) => {
+    if (sidebarData[chatId] || sidebarDataRequests.current.has(chatId)) return;
 
-    profilePicRequests.current.add(chatId);
+    sidebarDataRequests.current.add(chatId);
 
     try {
-      const response = await fetch(`/api/chat/profile-pic?chatId=${encodeURIComponent(chatId)}`);
+      const params = new URLSearchParams({ chatId });
+      if (lastMessageId) {
+        params.append('lastMessageId', lastMessageId);
+      }
+
+      const response = await fetch(`/api/chat/sidebar-data?${params.toString()}`);
       const data = await response.json();
 
-      if (data.success && data.profilePic) {
+      if (data.success) {
+        setSidebarData(prev => ({
+          ...prev,
+          [chatId]: {
+            profilePic: data.profilePic,
+            lastMessage: data.lastMessage
+          }
+        }));
+
+        // Também atualizar o estado de profilePics para compatibilidade
         setProfilePics(prev => ({ ...prev, [chatId]: data.profilePic }));
+
+        // Atualizar o chat com os dados da última mensagem se disponível
+        if (data.lastMessage) {
+          setChats(prev => prev.map(chat =>
+            widToString(chat.id) === chatId
+              ? { ...chat, lastReceivedKey: data.lastMessage }
+              : chat
+          ));
+        }
       } else {
+        setSidebarData(prev => ({ ...prev, [chatId]: { profilePic: null, lastMessage: null } }));
         setProfilePics(prev => ({ ...prev, [chatId]: null }));
       }
     } catch (error) {
+      setSidebarData(prev => ({ ...prev, [chatId]: { profilePic: null, lastMessage: null } }));
       setProfilePics(prev => ({ ...prev, [chatId]: null }));
     } finally {
-      profilePicRequests.current.delete(chatId);
+      sidebarDataRequests.current.delete(chatId);
     }
-  }, [profilePics]);
+  }, [sidebarData]);
 
   useEffect(() => {
     if (chats.length > 0) {
+      // Carregar dados do sidebar para os primeiros 8 chats visíveis
       chats.slice(0, 8).forEach(chat => {
         const chatId = widToString(chat.id);
-        if (profilePics[chatId] === undefined && !profilePicRequests.current.has(chatId)) {
-          fetchProfilePic(chatId);
+        if (!sidebarData[chatId] && !sidebarDataRequests.current.has(chatId)) {
+          const lastMessageId = chat.lastReceivedKey?._serialized;
+          fetchSidebarData(chatId, lastMessageId);
         }
       });
     }
-  }, [chats, fetchProfilePic]);
+  }, [chats, fetchSidebarData, sidebarData]);
 
   // === RENDERIZAÇÃO ===
 

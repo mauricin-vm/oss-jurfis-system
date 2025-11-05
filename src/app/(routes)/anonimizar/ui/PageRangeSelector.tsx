@@ -75,7 +75,7 @@ export function PageRangeSelector({ startPage, endPage, onStartPageChange, onEnd
         </div>
       </div>
       <div className="space-y-2 mt-4">
-        <Label htmlFor="excludedPages" className="text-sm">Páginas a Excluir (opcional)</Label>
+        <Label htmlFor="excludedPages" className="text-sm">Páginas a Excluir</Label>
         <Input
           id="excludedPages"
           type="text"

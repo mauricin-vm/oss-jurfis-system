@@ -47,16 +47,18 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  password      String
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String            @id @default(cuid())
+  name            String?
+  email           String            @unique
+  password        String
+  emailVerified   DateTime?
+  image           String?
+  role            UserRole          @default(SERVIDOR)
+  accounts        Account[]
+  sessions        Session[]
+  overtimeRecords OvertimeRecord[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@map("Chat_User")
   @@schema("jurfis")
@@ -69,5 +71,60 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("Chat_VerificationToken")
+  @@schema("jurfis")
+}
+
+model Meeting {
+  id               String        @id @default(cuid())
+  title            String
+  date             DateTime
+  startTime        String
+  endTime          String
+  requestedBy      String
+  email            String?
+  phone            String?
+  contacts         String?
+  notes            String?       @db.Text
+  status           MeetingStatus @default(APPROVED)
+  rejectionReason  String?       @db.Text
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@map("Meeting")
+  @@schema("jurfis")
+}
+
+enum MeetingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@schema("jurfis")
+}
+
+enum UserRole {
+  ADMIN
+  SERVIDOR
+
+  @@schema("jurfis")
+}
+
+model OvertimeRecord {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month              Int      // 1-12
+  year               Int      // 2024, 2025...
+  extraHours         Float    // Horas extras do mês
+  lateHours          Float    // Horas de atraso
+  balance            Float    // extraHours - lateHours
+  accumulatedBalance Float    // Saldo acumulado até este mês
+  documentPath       String?  // Caminho do arquivo no servidor de rede
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([userId, month, year]) // Um registro por mês/ano por usuário
+  @@index([userId, year, month])
+  @@map("OvertimeRecord")
   @@schema("jurfis")
 }

@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     if (!response.ok) return NextResponse.json({ success: false, error: `Falha ao carregar chats: ${response.statusText}`, status: response.status }, { status: response.status });
     const data = await response.json();
     const chats = data.response || data || [];
+
     const filteredChats = chats.filter((chat: any) => {
       // Filtrar PSAs
       if (chat.contact?.isPSA) return false;
@@ -33,25 +34,25 @@ export async function GET(request: NextRequest) {
 
       return true;
     });
-    const formatedResult = await Promise.all(filteredChats.map(async (chat: any) => {
-      if (chat.lastReceivedKey) {
-        const lastMessage = await fetch(`${WPPCONNECT_SERVER_URL}/api/${SESSION_NAME}/message-by-id/${chat.lastReceivedKey._serialized}`, { method: `GET`, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BEARER_TOKEN}` } });
-        if (!lastMessage.ok) return new NextResponse(`Erro ao listar as informações da mensagem (get-message-by-id)!`, { status: 500 });
-        const lastMessageData = await lastMessage.json();
 
-        // Adicionar detecção de GIF para a última mensagem
-        const messageData = lastMessageData.response.data;
-        if (messageData) {
-          const isGif = messageData.isGif ||
-            (messageData.filename && messageData.filename.toLowerCase().includes('.gif')) ||
-            (messageData.mimetype && messageData.mimetype.toLowerCase().includes('gif'));
-          messageData.isGif = isGif;
-        }
+    // Remover duplicatas baseado no ID do chat para evitar chaves duplicadas no React
+    const uniqueChats = filteredChats.filter((chat: any, index: number, self: any[]) =>
+      index === self.findIndex((c: any) => c.id._serialized === chat.id._serialized)
+    );
 
-        return { ...chat, lastReceivedKey: messageData };
+    // OTIMIZAÇÃO: Retornar apenas dados básicos dos chats, dados do sidebar serão carregados sob demanda
+    const formatedResult = uniqueChats.map((chat: any) => {
+      return {
+        ...chat,
+        // Manter apenas o ID da última mensagem para carregamento posterior
+        lastReceivedKey: chat.lastReceivedKey ? {
+          _serialized: chat.lastReceivedKey._serialized,
+          // Dados básicos para fallback se a API do sidebar falhar
+          content: '[Mensagem]',
+          timestamp: null
+        } : null
       };
-      return { ...chat, lastReceivedKey: null };
-    }));
+    });
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
     const paginatedChats = formatedResult.slice(startIndex, endIndex);
