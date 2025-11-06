@@ -1,8 +1,7 @@
 'use client'
 
 //importar bibliotecas e funções
-import { Chats } from '@/app/(routes)/chat/types/chat';
-import { Message } from '@wppconnect-team/wppconnect';
+import { Chats, Message } from '@/app/(routes)/chat/types/chat';
 import { HiOutlineDocument, HiOutlineMicrophone, HiOutlinePhotograph, HiOutlineUser, HiOutlineUserGroup, HiOutlineVideoCamera } from 'react-icons/hi';
 import { PiSticker } from 'react-icons/pi';
 import { AiOutlineGif } from "react-icons/ai";
@@ -16,28 +15,6 @@ interface ChatItemProps {
   onSelect: (chat: Chats) => void
 };
 const ChatItem: React.FC<ChatItemProps> = ({ chat, isSelected, profilePic, presenceStatus, onSelect }) => {
-
-  //formatar número de telefone (mesma lógica do formattedName)
-  const formatPhoneNumber = (phoneNumber: string) => {
-    // Remove a parte @c.us se existir
-    const cleanNumber = phoneNumber.split('@')[0];
-
-    // Se tem 13 dígitos e começa com 55, é um número brasileiro
-    if (cleanNumber.length === 13 && cleanNumber.startsWith('55')) {
-      const countryCode = cleanNumber.substring(0, 2); // 55
-      const areaCode = cleanNumber.substring(2, 4); // DD
-      const firstPart = cleanNumber.substring(4, 9); // 9XXXX
-      const secondPart = cleanNumber.substring(9, 13); // XXXX
-      return `+${countryCode} ${areaCode} ${firstPart}-${secondPart}`;
-    }
-
-    // Se não for padrão brasileiro, retorna com +55 na frente se não tiver
-    if (!cleanNumber.startsWith('55')) {
-      return `+55 ${cleanNumber}`;
-    }
-
-    return `+${cleanNumber}`;
-  };
 
   //formatar o conteúdo da mensagem
   const formatMessageBody = (message: Message) => {
@@ -191,6 +168,7 @@ const ChatItem: React.FC<ChatItemProps> = ({ chat, isSelected, profilePic, prese
       <div className="relative flex items-start gap-4">
         <div className="relative">
           {(profilePic && profilePic !== null) ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               className="w-12 h-12 rounded-full object-cover"
               src={profilePic}

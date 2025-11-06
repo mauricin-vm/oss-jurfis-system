@@ -247,7 +247,7 @@ export function MessageList({
 
   // Função para detectar scroll no topo e carregar mais mensagens
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const { scrollTop } = e.currentTarget;
 
     // Condições básicas para carregar mensagens antigas
     const isNearTop = scrollTop <= 100; // Aumentei a área de detecção

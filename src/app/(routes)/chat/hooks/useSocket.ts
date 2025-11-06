@@ -1,10 +1,27 @@
 import { io, Socket } from 'socket.io-client';
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { Message } from '@/app/(routes)/chat/types/chat';
 
 // Interfaces
 interface ReceivedMessage {
   session: string;
-  response: any;
+  response: Message;
+}
+
+interface MessageAck {
+  id: string | { _serialized: string };
+  ack: number;
+}
+
+interface IncomingCallData {
+  from: string;
+  peerJid: string;
+  timestamp: number;
+}
+
+interface RevokedMessageData {
+  id: string;
+  timestamp: number;
 }
 
 interface PresenceChangedEvent {
@@ -55,8 +72,8 @@ export function useSocket({ schema = 'jurfis' }: UseSocketProps) {
 
 
   // Estados para mensagens e presença
-  const [newMessages, setNewMessages] = useState<any[]>([]);
-  const [messageAcks, setMessageAcks] = useState<any[]>([]);
+  const [newMessages, setNewMessages] = useState<Message[]>([]);
+  const [messageAcks, setMessageAcks] = useState<MessageAck[]>([]);
   const [presenceState, setPresenceState] = useState<{
     chatId: string;
     isChanging: string;
@@ -258,7 +275,7 @@ export function useSocket({ schema = 'jurfis' }: UseSocketProps) {
       });
 
       // 2. Evento state-${session} - estados da sessão
-      socketRef.current.on(`state-${schema}`, (client: any, state: string) => {
+      socketRef.current.on(`state-${schema}`, (_client: Socket, state: string) => {
         console.log('📱 Estado da sessão:', state);
         
         const newStatus = state === 'CONNECTED' ? 'connected' :
@@ -302,9 +319,11 @@ export function useSocket({ schema = 'jurfis' }: UseSocketProps) {
       });
 
       // ACKs de mensagens
-      socketRef.current.on(`onack-${schema}`, (ackData: any) => {
-        const normalizedAck = {
-          id: ackData.id?._serialized || ackData.id,
+      socketRef.current.on(`onack-${schema}`, (ackData: MessageAck) => {
+        const normalizedAck: MessageAck = {
+          id: typeof ackData.id === 'object' && ackData.id !== null && '_serialized' in ackData.id
+            ? ackData.id._serialized
+            : ackData.id as string,
           ack: ackData.ack
         };
         setMessageAcks(prev => [...prev.slice(-49), normalizedAck]);
@@ -316,11 +335,11 @@ export function useSocket({ schema = 'jurfis' }: UseSocketProps) {
       });
 
       // Outros eventos
-      socketRef.current.on('incomingcall', (data: any) => {
+      socketRef.current.on('incomingcall', (data: IncomingCallData) => {
         console.log('📞 Chamada recebida:', data);
       });
 
-      socketRef.current.on(`onrevokedmessage-${schema}`, (data: any) => {
+      socketRef.current.on(`onrevokedmessage-${schema}`, (data: RevokedMessageData) => {
         console.log('🗑️ Mensagem revogada:', data);
       });
 
@@ -328,37 +347,38 @@ export function useSocket({ schema = 'jurfis' }: UseSocketProps) {
       console.error('❌ Erro ao criar socket:', error);
       setConnectionState(prev => ({ ...prev, status: 'server_offline' }));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient, schema, handlePresenceMessage]);
 
   // Conectar automaticamente
   useEffect(() => {
     connectToSocket();
 
+    // Capturar o valor do ref para usar no cleanup
+    const currentRetryTimeout = retryTimeoutRef.current;
+
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
       }
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
+      if (currentRetryTimeout) {
+        clearTimeout(currentRetryTimeout);
       }
     };
   }, [connectToSocket]);
 
   // Função para registrar callback de presença (compatibilidade)
-  const getPresence = useCallback((callback: (err: any, message: any) => void, sessionName?: string) => {
+  const getPresence = useCallback((callback: (err: Error | null, message: PresenceChangedEvent | null) => void, sessionName?: string) => {
     if (!socketRef.current) return () => {};
 
     const session = sessionName || schema;
     const eventName = `onpresencechanged-${session}`;
 
     const handleMessage = (data: PresenceChangedEvent) => {
-      const compatibleMessage = {
+      const compatibleMessage: PresenceChangedEvent = {
         id: data.id,
-        state: data.state === 'composing' ? 'typing' :
-               data.state === 'recording' ? 'recording_audio' :
-               data.state === 'available' ? 'online' : data.state,
-        isOnline: data.state === 'available',
+        state: data.state,
         participant: data.participant,
         session: data.session
       };
@@ -375,7 +395,7 @@ export function useSocket({ schema = 'jurfis' }: UseSocketProps) {
   }, [schema]);
 
   // Função para enviar mensagem
-  const sendMessage = useCallback((message: any) => {
+  const sendMessage = useCallback((message: Message) => {
     if (socketRef.current?.connected) {
       socketRef.current.emit('message', message);
       return true;

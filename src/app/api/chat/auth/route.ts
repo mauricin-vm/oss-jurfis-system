@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Configurações do wppconnect-server
-const WPPCONNECT_SERVER_URL = process.env.WPPCONNECT_SERVER_URL || 'http://localhost:21465';
-const SESSION_NAME = process.env.WHATSAPP_SESSION_NAME || 'session';
-
 export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json();

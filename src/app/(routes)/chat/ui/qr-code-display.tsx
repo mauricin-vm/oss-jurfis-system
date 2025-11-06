@@ -146,6 +146,7 @@ export function QRCodeDisplay({ qrCode, onGenerateNew, connectionState }: QRCode
 
         <div className="flex justify-center mb-6">
           {qrCode ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
               alt="QR Code WhatsApp"
@@ -167,7 +168,7 @@ export function QRCodeDisplay({ qrCode, onGenerateNew, connectionState }: QRCode
         <div className="text-center text-sm text-gray-600 mb-4">
           <p>1. Abra o WhatsApp no seu celular</p>
           <p>2. Vá em Menu → Dispositivos conectados</p>
-          <p>3. Toque em "Conectar um dispositivo"</p>
+          <p>3. Toque em &quot;Conectar um dispositivo&quot;</p>
           <p>4. Aponte a câmera para este código</p>
         </div>
 

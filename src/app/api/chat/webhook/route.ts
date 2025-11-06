@@ -1,5 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Tipos
+interface WebhookMessage {
+  id: string | { _serialized: string };
+  from: string;
+  body?: string;
+  caption?: string;
+  type?: string;
+  timestamp: number;
+  fromMe?: boolean;
+  author?: string;
+  mediaUrl?: string;
+  filename?: string;
+}
+
+interface WebhookData {
+  event: string;
+  data?: {
+    id?: { _serialized: string };
+    ack?: number;
+    state?: string;
+    qrcode?: string;
+    [key: string]: unknown;
+  };
+  qrcode?: string;
+}
+
+interface EventData {
+  type: string;
+  qrCode?: string;
+  timestamp: number;
+}
+
 // Webhook para receber mensagens em tempo real do wppconnect-server
 export async function POST(request: NextRequest) {
   try {
@@ -63,21 +95,24 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleNewMessage(data: any) {
+async function handleNewMessage(data: WebhookData) {
   const message = data.data;
+  if (!message || !('from' in message) || !('timestamp' in message)) return;
+
+  const webhookMsg = message as unknown as WebhookMessage;
 
   // Formatear mensagem recebida
   const formattedMessage = {
-    id: message.id._serialized || message.id,
-    chatId: message.from,
-    content: message.body || message.caption || '[Mídia]',
-    type: message.type === 'image' ? 'image' :
-      message.type === 'document' ? 'file' : 'text',
-    timestamp: new Date(message.timestamp * 1000).toISOString(),
-    fromMe: message.fromMe || false,
-    authorId: message.author || message.from,
-    mediaUrl: message.mediaUrl || null,
-    fileName: message.filename || null
+    id: typeof webhookMsg.id === 'object' && webhookMsg.id !== null && '_serialized' in webhookMsg.id ? webhookMsg.id._serialized : webhookMsg.id as string,
+    chatId: webhookMsg.from,
+    content: webhookMsg.body || webhookMsg.caption || '[Mídia]',
+    type: webhookMsg.type === 'image' ? 'image' :
+      webhookMsg.type === 'document' ? 'file' : 'text',
+    timestamp: new Date(webhookMsg.timestamp * 1000).toISOString(),
+    fromMe: webhookMsg.fromMe || false,
+    authorId: webhookMsg.author || webhookMsg.from,
+    mediaUrl: webhookMsg.mediaUrl || null,
+    fileName: webhookMsg.filename || null
   };
 
   // Aqui você pode:
@@ -87,14 +122,15 @@ async function handleNewMessage(data: any) {
   // 4. Notificar operadores
 
   // Se for uma mensagem de comando, processar automaticamente
-  if (!message.fromMe && message.body?.toLowerCase().startsWith('/')) {
+  if (!webhookMsg.fromMe && webhookMsg.body?.toLowerCase().startsWith('/')) {
     await processCommand(formattedMessage);
   }
 }
 
-async function handleMessageAck(data: any) {
+async function handleMessageAck(data: WebhookData) {
   // Atualizar status da mensagem (enviada, entregue, lida)
   const ackData = data.data;
+  if (!ackData || !ackData.id || !ackData.ack) return;
 
   // Transmitir ACK via WebSocket para todos os clientes conectados
   try {
@@ -119,25 +155,28 @@ async function handleMessageAck(data: any) {
   }
 }
 
-async function handlePresenceUpdate(data: any) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function handlePresenceUpdate(_data: WebhookData) {
   // Atualizar status online/digitando
-  const presenceData = data.data;
+  // const presenceData = _data.data;
 
 }
 
-async function handleStateChange(data: any) {
+async function handleStateChange(data: WebhookData) {
   // Mudança no estado da sessão WhatsApp
   const stateData = data.data;
 
   // Notificar todos os clientes conectados sobre mudança de estado
-  await notifyConnectionStateChange(stateData.state);
+  if (stateData?.state) {
+    await notifyConnectionStateChange(stateData.state);
+  }
 }
 
 // Novo handler para eventos de QR Code
-async function handleQRCode(data: any) {
+async function handleQRCode(data: WebhookData) {
 
   // Broadcast do QR Code para todos os clientes
-  const eventData = {
+  const eventData: EventData = {
     type: 'qr_code_generated',
     qrCode: data.data?.qrcode || data.qrcode,
     timestamp: Date.now()
@@ -147,8 +186,9 @@ async function handleQRCode(data: any) {
 }
 
 // Handler para quando WhatsApp é autenticado
-async function handleAuthenticated(data: any) {
-  const eventData = {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function handleAuthenticated(_data: WebhookData) {
+  const eventData: EventData = {
     type: 'authenticated',
     timestamp: Date.now()
   };
@@ -159,9 +199,10 @@ async function handleAuthenticated(data: any) {
 }
 
 // Handler para quando a sessão está pronta
-async function handleReady(data: any) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function handleReady(_data: WebhookData) {
 
-  const eventData = {
+  const eventData: EventData = {
     type: 'ready',
     timestamp: Date.now()
   };
@@ -173,7 +214,8 @@ async function handleReady(data: any) {
 }
 
 // Handler para quando desconectado
-async function handleDisconnected(data: any) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function handleDisconnected(_data: WebhookData) {
   await broadcastEvent({
     type: 'disconnected',
     timestamp: Date.now()
@@ -184,7 +226,7 @@ async function handleDisconnected(data: any) {
 }
 
 // Função genérica para broadcast de eventos
-async function broadcastEvent(eventData: any) {
+async function broadcastEvent(eventData: EventData) {
   try {
 
     // Broadcast via SSE endpoint
@@ -195,7 +237,7 @@ async function broadcastEvent(eventData: any) {
     });
 
     if (response.ok) {
-      const result = await response.json();
+      await response.json();
     } else {
       throw new Error(`Broadcast failed: ${response.status}`);
     }
@@ -229,7 +271,7 @@ async function notifyConnectionStateChange(state: string) {
   }
 }
 
-async function processCommand(message: any) {
+async function processCommand(message: { content: string; chatId: string }) {
   const command = message.content.toLowerCase();
 
   // Comandos automatizados básicos

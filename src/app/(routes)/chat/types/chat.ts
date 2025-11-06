@@ -1,8 +1,8 @@
-import { Chat as WppChat, Message as WppMessage, MessageType, Wid } from '@wppconnect-team/wppconnect';
+import { Chat as WppChat, Message as WppMessage, Wid } from '@wppconnect-team/wppconnect';
 
 // Helper function to convert Wid to string
 export const widToString = (wid: string | Wid): string => {
-  return typeof wid === 'string' ? wid : (wid as any)?._serialized || wid.toString();
+  return typeof wid === 'string' ? wid : (wid as Wid & { _serialized?: string })?._serialized || wid.toString();
 };
 
 // Extend the wppconnect Chat type with additional properties needed by the UI
@@ -27,11 +27,15 @@ export const widToString = (wid: string | Wid): string => {
 // Estender WppMessage com propriedades customizadas para mídia
 export interface Message extends WppMessage {
   body?: string; // Base64 da mídia
-  mimetype?: string; // Tipo MIME da mídia
+  mimetype: string; // Tipo MIME da mídia
   caption?: string; // Legenda da mídia
   vcardFormattedName?: string; // Nome formatado do vCard
   status?: 'sending' | 'sent' | 'delivered' | 'read' | 'received';
   isGif?: boolean; // Indica se o vídeo é um GIF
+  _serialized?: string; // ID serializado da mensagem
+  filename?: string; // Nome do arquivo
+  fileName?: string; // Nome do arquivo (alternativo)
+  name?: string; // Nome (alternativo)
 }
 
 export type Chats = Omit<WppChat, `lastReceivedKey`> & { lastReceivedKey: Message | null };

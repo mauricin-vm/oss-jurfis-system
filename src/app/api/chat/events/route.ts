@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
 // Endpoint para simular envio de eventos
 export async function POST(request: NextRequest) {
-  const { type, data } = await request.json();
+  const { type } = await request.json();
 
   // Aqui você pode processar e distribuir eventos
   // Por exemplo, salvar no banco ou enviar para outros clientes

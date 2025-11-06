@@ -6,6 +6,43 @@ const WPPCONNECT_SERVER_URL = process.env.WPPCONNECT_SERVER_URL || `http://local
 const SESSION_NAME = process.env.WHATSAPP_SESSION_NAME || `jurfis`;
 const BEARER_TOKEN = process.env.WPPCONNECT_TOKEN || ``;
 
+//tipos
+interface WppMessage {
+  id: string | { _serialized: string };
+  body?: string;
+  caption?: string;
+  type?: string;
+  timestamp?: number;
+  fromMe?: boolean;
+  ack?: number;
+  author?: string;
+  from?: string;
+  mediaUrl?: string;
+  filename?: string;
+  mimetype?: string;
+  vcardFormattedName?: string;
+  isGif?: boolean;
+}
+
+interface FormattedMessage {
+  id: string;
+  chatId: string;
+  content: string;
+  type: string;
+  timestamp: number;
+  fromMe: boolean;
+  status: string;
+  ack?: number;
+  authorId?: string;
+  mediaUrl: string | null;
+  fileName: string | null;
+  mimetype: string | null;
+  vcardFormattedName: string | null;
+  caption: string | null;
+  body: string | null;
+  isGif: boolean;
+}
+
 //função de GET (carregar mensagens)
 export async function GET(request: NextRequest, { params }: { params: Promise<{ chatId: string }> }) {
   try {
@@ -71,16 +108,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // OTIMIZAÇÃO: Não carregar mídia de todas as mensagens de uma vez
     // Carregar apenas metadados das mensagens primeiro
-    let formattedMessages;
+    let formattedMessages: FormattedMessage[];
     try {
-      formattedMessages = data.response.map((m: any) => {
+      formattedMessages = data.response.map((m: WppMessage): FormattedMessage => {
         // Detectar se é GIF baseado no mimetype/filename
-        const isGif = m.isGif ||
+        const isGif = !!(m.isGif ||
           (m.filename && m.filename.toLowerCase().includes('.gif')) ||
-          (m.mimetype && m.mimetype.toLowerCase().includes('gif'));
+          (m.mimetype && m.mimetype.toLowerCase().includes('gif')));
 
         return {
-          id: m.id._serialized || m.id,
+          id: typeof m.id === 'object' && m.id !== null && '_serialized' in m.id ? m.id._serialized : m.id as string,
           chatId: chatId,
           content: m.body || m.caption || `[Mídia]`,
           type: m.type || 'text',
@@ -98,7 +135,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           isGif: isGif
         };
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao processar mensagens:', error);
       formattedMessages = [];
     }
@@ -107,7 +144,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Para carregamento inicial (sem id), ordenar do mais antigo para o mais novo
     // Para paginação, manter a ordem da API
     const sortedMessages = !id
-      ? formattedMessages.sort((a: any, b: any) => (a.timestamp || 0) - (b.timestamp || 0))
+      ? formattedMessages.sort((a: FormattedMessage, b: FormattedMessage) => (a.timestamp || 0) - (b.timestamp || 0))
       : formattedMessages;
 
     return NextResponse.json({

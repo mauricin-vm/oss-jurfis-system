@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { useCallback } from 'react';
 import { Message } from '@/app/(routes)/chat/types/chat';
-import { HiOutlineClock, HiOutlinePlay, HiOutlineZoomIn, HiOutlineDownload, HiOutlineUser } from 'react-icons/hi';
+import { HiOutlineClock, HiOutlineUser } from 'react-icons/hi';
 import { FaRegFilePdf, FaRegFileExcel, FaRegFileWord, FaRegFilePowerpoint, FaRegFileImage, FaRegFileAlt, FaRegFileVideo, FaRegFileArchive, FaRegFileAudio, FaRegFile } from 'react-icons/fa';
 import { MdFileDownload } from "react-icons/md";
 
@@ -12,7 +12,6 @@ import { BsCheckLg, BsCheckAll } from 'react-icons/bs';
 import { GifPlayer } from './gif-player';
 import { FaPlay, FaPause } from 'react-icons/fa';
 import { HiMicrophone } from 'react-icons/hi2';
-import { IoSpeedometer } from 'react-icons/io5';
 import { cn } from '@/lib/utils';
 
 interface AudioStates {
@@ -59,7 +58,7 @@ export function MessageBubble({
       );
   };
 
-  const getMessageStatus = (message: any) => {
+  const getMessageStatus = (message: Message) => {
     switch (message.ack) {
       case 0:
         return <HiOutlineClock className="text-gray-400 h-[0.8rem] w-[0.8rem] text-xs" />;
@@ -153,7 +152,6 @@ export function MessageBubble({
     const today = new Date();
 
     // Resetar as horas para comparar apenas as datas
-    const messageDay = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate());
     const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
     // Calcular ontem
@@ -170,8 +168,8 @@ export function MessageBubble({
     });
   };
 
-  const getMedia = useCallback((message: any) => {
-    const messageContent = message as any;
+  const getMedia = useCallback((message: Message) => {
+    const messageContent = message;
 
     // Verificar se tem body válido
     if (!messageContent.body) {
@@ -232,6 +230,7 @@ export function MessageBubble({
             onMediaModal(true, 'image', `data:${messageContent.mimetype || 'image/jpeg'};base64,${messageContent.body}`);
           }}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={`data:${messageContent.mimetype || 'image/jpeg'};base64,${messageContent.body}`}
             loading="lazy"
@@ -262,7 +261,7 @@ export function MessageBubble({
         // Debug: vamos ver que campos estão disponíveis
         console.log('messageContent para documento:', messageContent);
 
-        const fileName = messageContent.caption || (messageContent as any)?.filename || (messageContent as any)?.fileName || (messageContent as any)?.name || 'documento';
+        const fileName = messageContent.caption || messageContent.filename || messageContent.fileName || messageContent.name || 'documento';
         const mimeType = messageContent.mimetype || 'application/octet-stream';
 
         // Calcular tamanho aproximado do arquivo (base64 para bytes)
@@ -353,7 +352,6 @@ export function MessageBubble({
       const audioState = audioStates[messageContent.id];
       const currentSpeed = audioState?.playbackRate || 1;
       const currentTime = audioState?.currentTime || 0;
-      const duration = audioState?.duration || 0;
       const hasStarted = audioState?.hasStartedOnce || false;
 
       const speedOptions = [1, 1.5, 2, 0.5];
@@ -396,6 +394,7 @@ export function MessageBubble({
             {!hasStarted ? (
               <div className="relative flex-shrink-0 h-full flex items-center">
                 {profileImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={profileImage}
                     alt="Meu perfil"
@@ -503,6 +502,7 @@ export function MessageBubble({
           {!hasStarted ? (
             <div className="relative flex-shrink-0 h-full flex items-center">
               {profileImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={profileImage}
                   alt="Perfil do contato"
@@ -564,6 +564,7 @@ export function MessageBubble({
             onMediaModal(true, 'sticker', dataUrl);
           }}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={dataUrl}
             loading="lazy"
@@ -613,7 +614,7 @@ export function MessageBubble({
 
     // se não for nenhum dos tipos de mensagem
     return null;
-  }, [audioStates, onAudioPlay, onAudioProgress, onMediaModal]);
+  }, [audioStates, onAudioPlay, onAudioProgress, onMediaModal, onAudioSpeedChange, profilePics, selectedChatId]);
 
   // Para stickers, mostrar sem fundo padrão mas com timestamp/status embaixo
   if (message.type === 'sticker') {

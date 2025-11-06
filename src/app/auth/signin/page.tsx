@@ -32,7 +32,7 @@ export default function SignIn() {
       const result = await signIn(`credentials`, { email, password, redirect: false });
       if (result?.error) setError(`Credenciais inválidas!`);
       else router.push(`/chat`);
-    } catch (error) {
+    } catch {
       setError(`Erro ao fazer login!`);
     } finally {
       setIsLoading(false);
@@ -58,7 +58,7 @@ export default function SignIn() {
       setShowRegister(false);
       setRegisterData({ email: ``, password: ``, name: ``, secretCode: `` });
       alert(`Conta criada com sucesso! Faça login para acessar o chat!`);
-    } catch (error) {
+    } catch {
       setError(`Erro ao criar conta!`);
     } finally {
       setIsLoading(false);

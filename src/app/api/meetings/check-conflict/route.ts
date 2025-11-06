@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma, MeetingStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -21,12 +21,12 @@ export async function POST(req: NextRequest) {
     const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
 
     // Construir filtro - excluir reunião específica se informado (útil ao editar)
-    const whereClause: any = {
+    const whereClause: Prisma.MeetingWhereInput = {
       date: {
         gte: startOfDay,
         lte: endOfDay
       },
-      status: 'APPROVED'
+      status: MeetingStatus.APPROVED
     };
 
     if (excludeMeetingId) {

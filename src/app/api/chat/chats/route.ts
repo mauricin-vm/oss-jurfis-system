@@ -6,6 +6,23 @@ const WPPCONNECT_SERVER_URL = process.env.WPPCONNECT_SERVER_URL || `http://local
 const SESSION_NAME = process.env.WHATSAPP_SESSION_NAME || `jurfis`;
 const BEARER_TOKEN = process.env.WPPCONNECT_TOKEN || ``;
 
+//tipos
+interface WppChat {
+  id: {
+    _serialized: string;
+  };
+  contact?: {
+    isPSA?: boolean;
+  };
+  isGroup?: boolean;
+  tcToken?: string;
+  tcTokenTimestamp?: number;
+  lastReceivedKey?: {
+    _serialized: string;
+  } | null;
+  [key: string]: unknown;
+}
+
 //função de GET (carregar chats)
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +35,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     const chats = data.response || data || [];
 
-    const filteredChats = chats.filter((chat: any) => {
+    const filteredChats = chats.filter((chat: WppChat) => {
       // Filtrar PSAs
       if (chat.contact?.isPSA) return false;
 
@@ -36,12 +53,12 @@ export async function GET(request: NextRequest) {
     });
 
     // Remover duplicatas baseado no ID do chat para evitar chaves duplicadas no React
-    const uniqueChats = filteredChats.filter((chat: any, index: number, self: any[]) =>
-      index === self.findIndex((c: any) => c.id._serialized === chat.id._serialized)
+    const uniqueChats = filteredChats.filter((chat: WppChat, index: number, self: WppChat[]) =>
+      index === self.findIndex((c: WppChat) => c.id._serialized === chat.id._serialized)
     );
 
     // OTIMIZAÇÃO: Retornar apenas dados básicos dos chats, dados do sidebar serão carregados sob demanda
-    const formatedResult = uniqueChats.map((chat: any) => {
+    const formatedResult = uniqueChats.map((chat: WppChat) => {
       return {
         ...chat,
         // Manter apenas o ID da última mensagem para carregamento posterior

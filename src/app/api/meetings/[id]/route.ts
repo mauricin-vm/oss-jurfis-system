@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 // PUT - Atualizar reunião (apenas autenticados)
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +18,7 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const { title, date, startTime, endTime, requestedBy, email, phone, notes } = await req.json();
 
     // Buscar dados atuais da reunião antes de atualizar
@@ -95,7 +95,7 @@ export async function PUT(
 // DELETE - Deletar reunião (apenas autenticados)
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -104,7 +104,7 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const { reason } = await req.json();
 
     // Buscar dados da reunião antes de deletar

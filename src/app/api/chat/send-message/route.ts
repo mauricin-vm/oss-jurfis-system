@@ -6,7 +6,7 @@ const BEARER_TOKEN = process.env.WPPCONNECT_TOKEN || '';
 
 export async function POST(request: NextRequest) {
   try {
-    const { chatId, message, type = 'text' } = await request.json();
+    const { chatId, message } = await request.json();
 
     if (!chatId || !message) {
       return NextResponse.json(

@@ -24,7 +24,7 @@ export function MiniCalendar({ selectedDate, onDateChange }: MiniCalendarProps) 
   const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
 
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  const blanks = Array.from({ length: startingDayOfWeek }, (_, i) => null);
+  const blanks = Array.from({ length: startingDayOfWeek }, () => null);
 
   const handlePrevMonth = () => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1));

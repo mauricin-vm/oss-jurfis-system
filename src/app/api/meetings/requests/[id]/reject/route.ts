@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 // PUT - Rejeitar solicitação de reunião (apenas autenticados)
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +18,7 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const { reason } = await req.json();
 
     if (!reason || reason.trim() === '') {

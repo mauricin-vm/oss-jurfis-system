@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Filtros
-    const where: any = {
+    const where: Prisma.OvertimeRecordWhereInput = {
       userId: user.id
     };
 
@@ -183,7 +183,8 @@ export async function POST(req: NextRequest) {
 }
 
 // Função auxiliar para recalcular saldos acumulados
-async function recalculateSubsequentBalances(userId: string, fromYear: number, fromMonth: number) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function recalculateSubsequentBalances(userId: string, _fromYear: number, _fromMonth: number) {
   // Buscar todos os registros do usuário ordenados por data
   const allRecords = await prisma.overtimeRecord.findMany({
     where: { userId },

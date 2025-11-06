@@ -121,7 +121,7 @@ export function RegisterModal({ isOpen, onClose, onSuccess }: RegisterModalProps
       addToast('Conta criada com sucesso! Você já pode fazer login.', 'success');
       handleClose();
       onSuccess?.();
-    } catch (err) {
+    } catch {
       addToast('Erro ao criar conta', 'error');
     } finally {
       setIsLoading(false);

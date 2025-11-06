@@ -7,7 +7,8 @@ const SESSION_NAME = process.env.WHATSAPP_SESSION_NAME || `jurfis`;
 const BEARER_TOKEN = process.env.WPPCONNECT_TOKEN || ``;
 
 //função de GET (gerar QR Code)
-export async function GET(request: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function GET(_request: NextRequest) {
   try {
     const webhookUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/chat/webhook`;
     const requestBody = { session: SESSION_NAME, waitQrCode: true, webhook: webhookUrl };
@@ -27,7 +28,8 @@ export async function GET(request: NextRequest) {
 };
 
 //função de POST (checar status da sessão)
-export async function POST(request: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function POST(_request: NextRequest) {
   try {
     const response = await fetch(`${WPPCONNECT_SERVER_URL}/api/${SESSION_NAME}/check-connection-session`, { method: `GET`, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BEARER_TOKEN}` } });
     if (!response.ok) throw new Error(`Falha ao checar status da sessão!`);

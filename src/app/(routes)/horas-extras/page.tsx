@@ -36,8 +36,10 @@ function HorasExtrasContent() {
   const [selectedRecord, setSelectedRecord] = useState<OvertimeRecord | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<{ id: string; title: string } | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasRenderedOnce, setHasRenderedOnce] = useState(false);
+  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [recordsLoaded, setRecordsLoaded] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [users, setUsers] = useState<Array<{ id: string; name?: string; email: string }>>([]);
 
   const isLoggedIn = !!session;
   const isCheckingSession = status === 'loading';
@@ -50,13 +52,37 @@ function HorasExtrasContent() {
     }
   }, [isAdmin, session?.user?.id, selectedUserId]);
 
-  // Loading de tela cheia apenas na primeira vez
-  const showInitialLoading = !hasRenderedOnce && (isCheckingSession || isLoading);
+  // Loading de tela cheia durante o carregamento inicial
+  const showInitialLoading = isInitialLoad;
+
+  // Calcular estatísticas
+  const calculateStats = useCallback((recordsList: OvertimeRecord[]) => {
+    // Se selectedYear for null, usar todos os registros, senão filtrar pelo ano
+    const yearRecords = selectedYear !== null
+      ? recordsList.filter(r => r.year === selectedYear)
+      : recordsList;
+
+    const totalExtraHours = yearRecords.reduce((sum, r) => sum + r.extraHours, 0);
+    const totalLateHours = yearRecords.reduce((sum, r) => sum + r.lateHours, 0);
+
+    // Saldo acumulado é o do último registro (mais recente)
+    const sortedRecords = [...recordsList].sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
+
+    const currentBalance = sortedRecords.length > 0 ? sortedRecords[0].accumulatedBalance : 0;
+
+    setStats({
+      totalExtraHours,
+      totalLateHours,
+      currentBalance
+    });
+  }, [selectedYear]);
 
   // Carregar registros
   const loadRecords = useCallback(async () => {
     if (isCheckingSession || !isLoggedIn) {
-      setIsLoading(false);
       return;
     }
 
@@ -64,8 +90,6 @@ function HorasExtrasContent() {
     if (isAdmin && !selectedUserId) {
       return;
     }
-
-    setIsLoading(true);
 
     try {
       const endpoint = isAdmin ? '/api/overtime/admin' : '/api/overtime';
@@ -96,45 +120,67 @@ function HorasExtrasContent() {
       console.error('Erro ao carregar registros:', error);
       addToast('Erro ao carregar registros', 'error');
     } finally {
-      setIsLoading(false);
+      setRecordsLoaded(true);
     }
-  }, [selectedYear, selectedUserId, isAdmin, isCheckingSession, isLoggedIn, addToast]);
+  }, [selectedYear, selectedUserId, isAdmin, isCheckingSession, isLoggedIn, addToast, calculateStats]);
 
   useEffect(() => {
     loadRecords();
   }, [loadRecords]);
 
-  // Marcar que renderizou pela primeira vez
-  useEffect(() => {
-    if (!isCheckingSession && !isLoading && !hasRenderedOnce) {
-      setHasRenderedOnce(true);
+  // Carregar usuários (se for admin)
+  const loadUsers = useCallback(async () => {
+    if (!isAdmin) {
+      setUsersLoaded(true);
+      return;
     }
-  }, [isCheckingSession, isLoading, hasRenderedOnce]);
 
-  // Calcular estatísticas
-  const calculateStats = (recordsList: OvertimeRecord[]) => {
-    // Se selectedYear for null, usar todos os registros, senão filtrar pelo ano
-    const yearRecords = selectedYear !== null
-      ? recordsList.filter(r => r.year === selectedYear)
-      : recordsList;
+    try {
+      const response = await fetch('/api/overtime/users');
+      const data = await response.json();
 
-    const totalExtraHours = yearRecords.reduce((sum, r) => sum + r.extraHours, 0);
-    const totalLateHours = yearRecords.reduce((sum, r) => sum + r.lateHours, 0);
+      if (data.success) {
+        setUsers(data.users);
+      } else {
+        addToast(data.error || 'Erro ao carregar servidores', 'error');
+      }
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error);
+    } finally {
+      setUsersLoaded(true);
+    }
+  }, [isAdmin, addToast]);
 
-    // Saldo acumulado é o do último registro (mais recente)
-    const sortedRecords = [...recordsList].sort((a, b) => {
-      if (a.year !== b.year) return b.year - a.year;
-      return b.month - a.month;
-    });
+  // Carregar usuários quando a sessão estiver pronta
+  useEffect(() => {
+    if (!isCheckingSession && isLoggedIn) {
+      loadUsers();
+    }
+  }, [isCheckingSession, isLoggedIn, loadUsers]);
 
-    const currentBalance = sortedRecords.length > 0 ? sortedRecords[0].accumulatedBalance : 0;
+  // Controlar o loading inicial - só termina quando tudo estiver carregado
+  useEffect(() => {
+    // Se está verificando sessão, mantém loading
+    if (isCheckingSession) {
+      return;
+    }
 
-    setStats({
-      totalExtraHours,
-      totalLateHours,
-      currentBalance
-    });
-  };
+    // Se não está logado, termina loading imediatamente
+    if (!isLoggedIn) {
+      setIsInitialLoad(false);
+      return;
+    }
+
+    // Se está logado, verifica o que precisa ser carregado
+    const needsUsers = isAdmin;
+    const hasUsers = needsUsers ? usersLoaded : true;
+    const hasRecords = recordsLoaded;
+
+    // Só termina o loading inicial quando tudo que precisa foi carregado
+    if (hasUsers && hasRecords) {
+      setIsInitialLoad(false);
+    }
+  }, [isCheckingSession, isLoggedIn, isAdmin, usersLoaded, recordsLoaded, selectedUserId]);
 
   // Adicionar novo registro
   const handleAddRecord = async (formData: OvertimeFormData) => {
@@ -292,6 +338,7 @@ function HorasExtrasContent() {
         onUserChange={setSelectedUserId}
         onNewRecord={() => setIsAddModalOpen(true)}
         onLogin={() => setIsLoginModalOpen(true)}
+        users={users}
       />
 
       {/* Conteúdo Principal */}

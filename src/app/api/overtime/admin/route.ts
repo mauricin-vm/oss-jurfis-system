@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     const userId = searchParams.get('userId');
 
     // Filtros
-    const where: any = {};
+    const where: Prisma.OvertimeRecordWhereInput = {};
 
     if (year) {
       where.year = parseInt(year);

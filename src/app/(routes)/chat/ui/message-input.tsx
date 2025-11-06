@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { HiOutlinePlus, HiOutlineEmojiHappy } from 'react-icons/hi';
 import { HiOutlinePaperAirplane } from 'react-icons/hi2';
-import { Chats, Message } from '@/app/(routes)/chat/types/chat';
+import { Chats } from '@/app/(routes)/chat/types/chat';
 
 interface MessageInputProps {
   selectedChat: { chat: Chats, isOnline: string } | null,

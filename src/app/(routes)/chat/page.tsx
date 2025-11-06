@@ -28,7 +28,6 @@ export default function ChatPage() {
     connectionState,
     newMessages,
     messageAcks,
-    presenceState,
     getPresence,
     generateQRCode
   } = useSocket({ schema: process.env.NEXT_PUBLIC_WHATSAPP_SESSION_NAME || 'jurfis' });
@@ -656,7 +655,7 @@ export default function ChatPage() {
           ...latestMessage,
           content: latestMessage.content || latestMessage.body,
           timestamp: latestMessage.timestamp || latestMessage.t
-        } as any,
+        } as Message,
         // Só incrementar unreadCount se não for mensagem minha
         unreadCount: latestMessage.fromMe ? prevChats[chatIndex].unreadCount || 0 : (prevChats[chatIndex].unreadCount || 0) + 1
       };
@@ -671,14 +670,16 @@ export default function ChatPage() {
     if (selectedChat && widToString(selectedChat.chat.id) === chatId) {
       // Função assíncrona para processar mensagens com mídia
       const processMessage = async () => {
-        let messageData = {
+        let messageData: Message = {
+          ...latestMessage,
           id: latestMessage.id,
-          chatId: latestMessage.chatId,
-          content: latestMessage.content || latestMessage.body,
+          chatId: typeof latestMessage.chatId === 'string' ? latestMessage.chatId : widToString(latestMessage.chatId),
+          content: latestMessage.content || latestMessage.body || '',
           type: latestMessage.type,
           timestamp: latestMessage.timestamp || latestMessage.t,
           fromMe: latestMessage.fromMe,
-          status: latestMessage.fromMe ? 'sent' as const : 'delivered' as const
+          status: latestMessage.fromMe ? 'sent' as const : 'delivered' as const,
+          mimetype: latestMessage.mimetype ?? ''
         };
 
         // Se for mensagem de mídia, buscar os dados
@@ -688,7 +689,7 @@ export default function ChatPage() {
             messageData = {
               ...messageData,
               ...mediaData
-            } as any;
+            } as Message;
           }
         }
 
@@ -696,7 +697,7 @@ export default function ChatPage() {
           const messageExists = prevMessages.some(msg => msg.id === latestMessage.id);
           if (messageExists) return prevMessages;
 
-          return [...prevMessages, messageData as any];
+          return [...prevMessages, messageData as Message];
         });
 
         // Sinalizar scroll após a mensagem ser adicionada
@@ -728,7 +729,7 @@ export default function ChatPage() {
       setMessages(currentMessages => {
         return currentMessages.map(message => {
           if (message.id === latestAck.id) {
-            let newStatus = 'sent';
+            let newStatus: 'sending' | 'sent' | 'delivered' | 'read' | 'received' = 'sent';
             if (latestAck.ack === 1) newStatus = 'sent';
             else if (latestAck.ack === 2) newStatus = 'delivered';
             else if (latestAck.ack === 3) newStatus = 'read';
@@ -745,8 +746,8 @@ export default function ChatPage() {
   useEffect(() => {
     if (!getPresence) return;
 
-    const cleanup = getPresence((err: any, message: any) => {
-      if (err) return;
+    const cleanup = getPresence((err: Error | null, message: { id: string; state: string; isOnline?: boolean } | null) => {
+      if (err || !message) return;
 
       const chatId = message.id;
       let presenceText = '';
@@ -772,7 +773,7 @@ export default function ChatPage() {
 
   // === CARREGAR DADOS DO SIDEBAR (FOTOS DE PERFIL + ÚLTIMA MENSAGEM) ===
   const sidebarDataRequests = useRef<Set<string>>(new Set());
-  const [sidebarData, setSidebarData] = useState<Record<string, { profilePic: string | null, lastMessage: any }>>({});
+  const [sidebarData, setSidebarData] = useState<Record<string, { profilePic: string | null, lastMessage: Message | null }>>({});
 
   const fetchSidebarData = useCallback(async (chatId: string, lastMessageId?: string) => {
     if (sidebarData[chatId] || sidebarDataRequests.current.has(chatId)) return;
@@ -812,7 +813,7 @@ export default function ChatPage() {
         setSidebarData(prev => ({ ...prev, [chatId]: { profilePic: null, lastMessage: null } }));
         setProfilePics(prev => ({ ...prev, [chatId]: null }));
       }
-    } catch (error) {
+    } catch {
       setSidebarData(prev => ({ ...prev, [chatId]: { profilePic: null, lastMessage: null } }));
       setProfilePics(prev => ({ ...prev, [chatId]: null }));
     } finally {

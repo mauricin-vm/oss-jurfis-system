@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     //executar script Python
     const command = `python "${pythonScriptPath}" "${inputPath}" "${outputPath}" "${redactionsPath}"`;
-    const { stdout, stderr } = await execAsync(command);
+    const { stderr } = await execAsync(command);
     if (stderr) console.warn(`Python stderr:`, stderr);
 
     //verificar se o arquivo foi criado
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     const filename = acordaoNumber && rvNumber ? `Acórdão ${acordaoNumber} RV ${rvNumber} Anonimizado.pdf` : `Documento Selecionado Anonimizado.pdf`;
 
     //retornar o arquivo anonimizado
-    return new NextResponse(processedBuffer, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"` } });
+    return new NextResponse(new Uint8Array(processedBuffer), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"` } });
 
   } catch (error) {
     console.error(`Erro na anonimização com PyMuPDF:`, error);

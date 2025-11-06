@@ -84,7 +84,7 @@ export function LoginModal({ isOpen, onClose, onOpenRegister }: LoginModalProps)
         // A sessão será atualizada automaticamente pelo NextAuth
         // e o calendário recarregará via useEffect
       }
-    } catch (err) {
+    } catch {
       addToast('Erro ao fazer login', 'error');
     } finally {
       setIsLoading(false);

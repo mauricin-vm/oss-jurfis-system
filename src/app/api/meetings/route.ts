@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, MeetingStatus } from '@prisma/client';
 import { sendApprovalEmail } from '@/lib/email';
 
 const prisma = new PrismaClient();
@@ -18,9 +18,9 @@ export async function GET(req: NextRequest) {
         gte: new Date(startDate),
         lte: new Date(endDate)
       },
-      status: 'APPROVED' // Apenas reuniões aprovadas para usuários não autenticados
+      status: MeetingStatus.APPROVED // Apenas reuniões aprovadas para usuários não autenticados
     } : {
-      status: 'APPROVED'
+      status: MeetingStatus.APPROVED
     };
 
     const meetings = await prisma.meeting.findMany({

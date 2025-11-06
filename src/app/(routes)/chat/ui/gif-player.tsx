@@ -10,7 +10,7 @@ interface GifPlayerProps {
   onModalOpen: () => void;
 }
 
-export function GifPlayer({ src, alt = 'GIF', className, onModalOpen }: GifPlayerProps) {
+export function GifPlayer({ src, className, onModalOpen }: GifPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [showPlayButton, setShowPlayButton] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);

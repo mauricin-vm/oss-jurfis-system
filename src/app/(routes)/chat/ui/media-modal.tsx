@@ -60,6 +60,7 @@ export function MediaModal({ isOpen, type, url, onClose }: MediaModalProps) {
         </button>
 
         {type === 'image' && (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={url}
             alt="Imagem ampliada"
@@ -69,6 +70,7 @@ export function MediaModal({ isOpen, type, url, onClose }: MediaModalProps) {
         )}
 
         {type === 'sticker' && (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={url}
             alt="Sticker ampliado"

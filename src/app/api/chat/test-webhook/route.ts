@@ -114,7 +114,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Decidir qual método usar baseado no parâmetro
-    const results: any = { eventSent: testEvent };
+    interface TestResults {
+      eventSent: typeof testEvent;
+      webhookResult?: { success: boolean; status: number; data?: unknown };
+      webhookResponse?: unknown;
+      webhookError?: string;
+      sseResult?: { success: boolean; data?: unknown };
+      sseResponse?: unknown;
+      sseError?: string;
+    }
+    const results: TestResults = { eventSent: testEvent };
 
     if (method === 'webhook' || !method) {
       // Método tradicional: webhook

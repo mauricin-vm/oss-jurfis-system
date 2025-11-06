@@ -32,7 +32,7 @@ export function RecordsTable({ records, onEdit, onDelete, onViewDocument, isAdmi
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
         <p className="text-gray-500">Nenhum registro encontrado para este ano.</p>
-        <p className="text-sm text-gray-400 mt-2">Clique em "Novo Registro Mensal" para adicionar.</p>
+        <p className="text-sm text-gray-400 mt-2">Clique em &quot;Novo Registro Mensal&quot; para adicionar.</p>
       </div>
     );
   }

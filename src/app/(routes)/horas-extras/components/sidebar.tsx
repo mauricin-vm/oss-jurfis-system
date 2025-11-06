@@ -22,6 +22,7 @@ interface SidebarProps {
   onUserChange: (userId: string | null) => void;
   onNewRecord: () => void;
   onLogin: () => void;
+  users: User[];
 }
 
 export function Sidebar({
@@ -34,11 +35,11 @@ export function Sidebar({
   selectedUserId,
   onUserChange,
   onNewRecord,
-  onLogin
+  onLogin,
+  users
 }: SidebarProps) {
   const { addToast } = useToast();
   const [years, setYears] = useState<number[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
 
   // Gerar lista de anos (ano atual e 4 anos anteriores)
   useEffect(() => {
@@ -50,27 +51,6 @@ export function Sidebar({
     setYears(yearList); // Já em ordem decrescente
   }, []);
 
-  // Carregar lista de usuários (apenas admin)
-  useEffect(() => {
-    if (isAdmin) {
-      loadUsers();
-    }
-  }, [isAdmin]);
-
-  const loadUsers = async () => {
-    try {
-      const response = await fetch('/api/overtime/users');
-      const data = await response.json();
-
-      if (data.success) {
-        setUsers(data.users);
-      } else {
-        addToast(data.error || 'Erro ao carregar servidores', 'error');
-      }
-    } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
-    }
-  };
 
   const handleLogout = async () => {
     await signOut({ redirect: false });

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
           };
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(heartbeat)}\n\n`));
-        } catch (error) {
+        } catch {
           // Cliente desconectado
           clearInterval(interval);
           connectedClients.delete(controller);
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       try {
         client.enqueue(encoder.encode(message));
         activeClients.add(client);
-      } catch (error) {
+      } catch {
         // Cliente desconectado, remover da lista
       }
     }
@@ -105,26 +105,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Função helper para notificar externamente (pode ser chamada de outros lugares)
-export async function broadcastConnectionStateChange(state: string) {
-  try {
-    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/chat/connection-events`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'connection_state_change',
-        state,
-        connected: state === 'CONNECTED'
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const result = await response.json();
-
-  } catch (error) {
-    console.error('Error broadcasting connection state:', error);
-  }
-}

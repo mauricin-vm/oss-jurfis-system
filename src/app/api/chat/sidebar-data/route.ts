@@ -1,10 +1,20 @@
 //importar bibliotecas e funções
 import { NextRequest, NextResponse } from 'next/server';
+import { Message } from '@/app/(routes)/chat/types/chat';
 
 //definir variáveis de ambiente
 const WPPCONNECT_SERVER_URL = process.env.WPPCONNECT_SERVER_URL || `http://localhost:21465`;
 const SESSION_NAME = process.env.WHATSAPP_SESSION_NAME || `jurfis`;
 const BEARER_TOKEN = process.env.WPPCONNECT_TOKEN || ``;
+
+//tipos
+interface ProfileResult {
+  profilePic: string | null;
+}
+
+interface MessageResult {
+  lastMessage: Message | null;
+}
 
 //função de GET (carregar dados do sidebar - foto de perfil e última mensagem)
 export async function GET(request: NextRequest) {
@@ -18,10 +28,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Fazer requisições em paralelo com timeout curto
-    const promises = [];
-
-    // 1. Buscar foto de perfil
-    promises.push(
+    const promises: [Promise<ProfileResult>, Promise<MessageResult>] = [
+      // 1. Buscar foto de perfil
       fetch(`${WPPCONNECT_SERVER_URL}/api/${SESSION_NAME}/get-profile-pic/${chatId}`, {
         method: `GET`,
         headers: {
@@ -35,12 +43,10 @@ export async function GET(request: NextRequest) {
           return { profilePic: profileData.response || null };
         }
         return { profilePic: null };
-      }).catch(() => ({ profilePic: null }))
-    );
+      }).catch(() => ({ profilePic: null })),
 
-    // 2. Buscar última mensagem se fornecida
-    if (lastMessageId) {
-      promises.push(
+      // 2. Buscar última mensagem se fornecida
+      lastMessageId ?
         fetch(`${WPPCONNECT_SERVER_URL}/api/${SESSION_NAME}/message-by-id/${lastMessageId}`, {
           method: `GET`,
           headers: {
@@ -65,10 +71,8 @@ export async function GET(request: NextRequest) {
           }
           return { lastMessage: null };
         }).catch(() => ({ lastMessage: null }))
-      );
-    } else {
-      promises.push(Promise.resolve({ lastMessage: null }));
-    }
+      : Promise.resolve({ lastMessage: null })
+    ];
 
     // Executar ambas as requisições em paralelo
     const [profileResult, messageResult] = await Promise.all(promises);

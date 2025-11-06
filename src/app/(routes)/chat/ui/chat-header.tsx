@@ -14,6 +14,7 @@ export function ChatHeader({ selectedChat, profilePic }: ChatHeaderProps) {
     <div className="p-4 bg-gray-100 border-b flex items-center gap-3 h-[77px]">
       <div className="relative">
         {profilePic ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={profilePic}
             alt={selectedChat.chat.contact.formattedName}

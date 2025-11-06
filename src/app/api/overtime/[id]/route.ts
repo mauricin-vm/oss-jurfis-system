@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 // PUT - Atualizar registro
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,7 +17,7 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const formData = await req.formData();
     const extraHours = parseFloat(formData.get('extraHours') as string);
     const lateHours = parseFloat(formData.get('lateHours') as string);
@@ -108,7 +108,7 @@ export async function PUT(
 // DELETE - Deletar registro
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -117,7 +117,7 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Buscar usuário
     const user = await prisma.user.findUnique({
