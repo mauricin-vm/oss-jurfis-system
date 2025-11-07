@@ -1,6 +1,35 @@
 'use client'
 
+import { useState } from 'react';
 import { OvertimeRecord } from '../types';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { FileText, Pencil, Trash2, MoreHorizontal, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Filter, User, Calendar } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { cn } from "@/lib/utils";
 
 interface RecordsTableProps {
   records: OvertimeRecord[];
@@ -8,6 +37,12 @@ interface RecordsTableProps {
   onDelete: (id: string) => void;
   onViewDocument: (id: string) => void;
   isAdmin: boolean;
+  users: Array<{ id: string; name?: string; email: string }>;
+  selectedUserId: string | null;
+  onUserChange: (userId: string | null) => void;
+  selectedYear: number | null;
+  onYearChange: (year: number | null) => void;
+  currentUserId?: string;
 }
 
 const monthNames = [
@@ -15,7 +50,21 @@ const monthNames = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
-export function RecordsTable({ records, onEdit, onDelete, onViewDocument, isAdmin }: RecordsTableProps) {
+export function RecordsTable({
+  records,
+  onEdit,
+  onDelete,
+  onViewDocument,
+  isAdmin,
+  users,
+  selectedUserId,
+  onUserChange,
+  selectedYear,
+  onYearChange,
+  currentUserId
+}: RecordsTableProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
@@ -28,111 +77,322 @@ export function RecordsTable({ records, onEdit, onDelete, onViewDocument, isAdmi
     return `${isNegative ? '-' : ''}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   };
 
-  if (records.length === 0) {
-    return (
-      <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
-        <p className="text-gray-500">Nenhum registro encontrado para este ano.</p>
-        <p className="text-sm text-gray-400 mt-2">Clique em &quot;Novo Registro Mensal&quot; para adicionar.</p>
-      </div>
-    );
+  // Paginação
+  const totalPages = Math.ceil(records.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRecords = records.slice(startIndex, endIndex);
+
+  // Reset page when records change
+  if (currentPage > totalPages && totalPages > 0) {
+    setCurrentPage(1);
   }
 
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Mês/Ano</th>
-              {isAdmin && <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Servidor</th>}
-              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">Horas Extras</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">Atrasos</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">Saldo Mensal</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">Saldo Acumulado</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Documento</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {records.map((record) => {
-              const isCurrentMonth = record.month === currentMonth && record.year === currentYear;
-              const balanceColor = record.balance >= 0 ? 'text-green-600' : 'text-red-600';
-              const accBalanceColor = record.accumulatedBalance >= 0 ? 'text-blue-600' : 'text-orange-600';
+  // Anos disponíveis
+  const years = (() => {
+    const currentYear = new Date().getFullYear();
+    const yearList = [];
+    for (let i = currentYear; i >= currentYear - 4; i--) {
+      yearList.push(i);
+    }
+    return yearList;
+  })();
 
-              return (
-                <tr
-                  key={record.id}
-                  className={`hover:bg-gray-50 transition-colors ${isCurrentMonth ? 'bg-blue-50' : ''}`}
+  return (
+    <div className="space-y-4">
+      {/* Botão de Filtros */}
+      <div className="flex justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-2 cursor-pointer">
+              <Filter className="h-4 w-4" />
+              <span className="hidden sm:inline">Filtros</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[280px] sm:w-[320px] p-0">
+            <div className="p-4 space-y-4">
+
+              {isAdmin && (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Servidor
+                  </label>
+                  <Select
+                    value={selectedUserId || currentUserId || ''}
+                    onValueChange={(value) => onUserChange(value || null)}
+                  >
+                    <SelectTrigger className="h-10 rounded-md border bg-background hover:bg-accent/50 focus:ring-1 focus:ring-ring transition-colors">
+                      <SelectValue placeholder="Selecione um servidor" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-md">
+                      {users.map(user => (
+                        <SelectItem
+                          key={user.id}
+                          value={user.id}
+                          className="cursor-pointer h-9"
+                        >
+                          {user.name || user.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Período
+                </label>
+                <Select
+                  value={selectedYear?.toString() || 'todos'}
+                  onValueChange={(value) => onYearChange(value === 'todos' ? null : Number(value))}
                 >
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {monthNames[record.month - 1]} / {record.year}
-                    {isCurrentMonth && (
-                      <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                        Atual
-                      </span>
-                    )}
-                  </td>
-                  {isAdmin && (
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {record.user?.name || record.user?.email || 'N/A'}
-                    </td>
-                  )}
-                  <td className="px-4 py-3 text-sm text-right text-green-600 font-medium">
-                    +{convertDecimalToTime(record.extraHours)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right text-red-600 font-medium">
-                    -{convertDecimalToTime(record.lateHours)}
-                  </td>
-                  <td className={`px-4 py-3 text-sm text-right font-semibold ${balanceColor}`}>
-                    {record.balance >= 0 ? '+' : ''}{convertDecimalToTime(record.balance)}
-                  </td>
-                  <td className={`px-4 py-3 text-sm text-right font-semibold ${accBalanceColor}`}>
-                    {record.accumulatedBalance >= 0 ? '+' : ''}{convertDecimalToTime(record.accumulatedBalance)}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {record.documentPath ? (
-                      <button
-                        onClick={() => onViewDocument(record.id)}
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-1 rounded transition-colors cursor-pointer inline-flex items-center gap-1 text-sm"
-                        title="Ver documento"
+                  <SelectTrigger className="h-10 rounded-md border bg-background hover:bg-accent/50 focus:ring-1 focus:ring-ring transition-colors">
+                    <SelectValue placeholder="Selecione um período" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-md">
+                    <SelectItem value="todos" className="cursor-pointer h-9">
+                      Todos os anos
+                    </SelectItem>
+                    {years.map(year => (
+                      <SelectItem
+                        key={year}
+                        value={year.toString()}
+                        className="cursor-pointer h-9"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Ver
-                      </button>
-                    ) : (
-                      <span className="text-gray-400 text-sm">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => onEdit(record)}
-                        className="text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors cursor-pointer"
-                        title="Editar"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => onDelete(record.id)}
-                        className="text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors cursor-pointer"
-                        title="Excluir"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="border-t p-3">
+              <div className="text-xs text-muted-foreground text-center">
+                {records.length} {records.length === 1 ? 'registro' : 'registros'} encontrado{records.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
+      {/* Tabela */}
+      {records.length === 0 ? (
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+          <div className="p-8 text-center">
+            <p className="text-muted-foreground">Nenhum registro encontrado.</p>
+            <p className="text-sm text-muted-foreground mt-2">Clique em &quot;Novo Registro&quot; para adicionar.</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
+            <div className="relative w-full overflow-x-auto">
+              <Table className="min-w-[800px]">
+            <TableHeader>
+              <TableRow className="bg-muted hover:bg-muted border-b">
+                <TableHead className="w-[200px] font-semibold">Mês/Ano</TableHead>
+                {isAdmin && <TableHead className="w-[200px] font-semibold">Servidor</TableHead>}
+                <TableHead className="font-semibold">Horas Extras</TableHead>
+                <TableHead className="font-semibold">Atrasos</TableHead>
+                <TableHead className="font-semibold">Saldo Mensal</TableHead>
+                <TableHead className="font-semibold">Saldo Acumulado</TableHead>
+                <TableHead className="w-[120px] font-semibold">Documento</TableHead>
+                <TableHead className="w-[70px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedRecords.map((record, index) => {
+                const isCurrentMonth = record.month === currentMonth && record.year === currentYear;
+                const balanceColor = record.balance >= 0 ? 'text-green-600' : 'text-red-600';
+                const accBalanceColor = record.accumulatedBalance >= 0 ? 'text-blue-600' : 'text-orange-600';
+
+                return (
+                  <TableRow
+                    key={record.id}
+                    className="bg-white hover:bg-muted/40"
+                  >
+                    <TableCell className="font-medium">
+                      {monthNames[record.month - 1]} / {record.year}
+                    </TableCell>
+                    {isAdmin && (
+                      <TableCell>
+                        {record.user?.name || record.user?.email || 'N/A'}
+                      </TableCell>
+                    )}
+                    <TableCell className="text-green-600 font-medium">
+                      +{convertDecimalToTime(record.extraHours)}
+                    </TableCell>
+                    <TableCell className="text-red-600 font-medium">
+                      -{convertDecimalToTime(record.lateHours)}
+                    </TableCell>
+                    <TableCell className={`font-semibold ${balanceColor}`}>
+                      {record.balance >= 0 ? '+' : ''}{convertDecimalToTime(record.balance)}
+                    </TableCell>
+                    <TableCell className={`font-semibold ${accBalanceColor}`}>
+                      {record.accumulatedBalance >= 0 ? '+' : ''}{convertDecimalToTime(record.accumulatedBalance)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {record.documentPath ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onViewDocument(record.id);
+                          }}
+                          className="h-7 text-xs cursor-pointer"
+                        >
+                          <FileText className="h-3 w-3 mr-1" />
+                          Ver
+                        </Button>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Abrir menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEdit(record);
+                            }}
+                            className="h-9 cursor-pointer"
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(record.id);
+                            }}
+                            className="h-9 cursor-pointer text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      {/* Footer com Paginação */}
+      <div className="flex flex-col sm:flex-row items-center justify-end gap-4 px-2 py-4">
+        {/* Select de itens por página e navegação */}
+        <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full sm:w-auto">
+          <Select
+            value={itemsPerPage.toString()}
+            onValueChange={(value) => {
+              setItemsPerPage(Number(value));
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="h-8 w-16 rounded-md border bg-background">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-md min-w-[4rem]">
+              <SelectPrimitive.Item
+                value="10"
+                className={cn(
+                  "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 h-9"
+                )}
+              >
+                <SelectPrimitive.ItemText>10</SelectPrimitive.ItemText>
+              </SelectPrimitive.Item>
+              <SelectPrimitive.Item
+                value="20"
+                className={cn(
+                  "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 h-9"
+                )}
+              >
+                <SelectPrimitive.ItemText>20</SelectPrimitive.ItemText>
+              </SelectPrimitive.Item>
+              <SelectPrimitive.Item
+                value="50"
+                className={cn(
+                  "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 h-9"
+                )}
+              >
+                <SelectPrimitive.ItemText>50</SelectPrimitive.ItemText>
+              </SelectPrimitive.Item>
+              <SelectPrimitive.Item
+                value="100"
+                className={cn(
+                  "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 h-9"
+                )}
+              >
+                <SelectPrimitive.ItemText>100</SelectPrimitive.ItemText>
+              </SelectPrimitive.Item>
+            </SelectContent>
+          </Select>
+
+          <div className="flex items-center gap-3 sm:gap-4">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
+              Página {currentPage} de {totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+        </>
+      )}
     </div>
   );
 }

@@ -1,8 +1,15 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react';
-import { useToast } from './toast-context';
+import { toast } from 'sonner';
 import { OvertimeFormData } from '../types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface AddRecordModalProps {
   isOpen: boolean;
@@ -17,7 +24,7 @@ const monthNames = [
 ];
 
 export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: AddRecordModalProps) {
-  const { addToast } = useToast();
+  
   const [isClosing, setIsClosing] = useState(false);
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,14 +110,14 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
     if (file) {
       // Validar tamanho (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
-        addToast('Arquivo muito grande. Tamanho máximo: 10MB', 'error');
+        toast.warning('Arquivo muito grande. Tamanho máximo: 10MB');
         return;
       }
 
       // Validar tipo
       const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
       if (!validTypes.includes(file.type)) {
-        addToast('Tipo de arquivo inválido. Use PDF, PNG ou JPG', 'error');
+        toast.warning('Tipo de arquivo inválido. Use PDF, PNG ou JPG');
         return;
       }
 
@@ -120,7 +127,7 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
 
   const validateForm = (): boolean => {
     if (!formData.month || !formData.year) {
-      addToast('Mês e ano são obrigatórios', 'warning');
+      toast.warning('Mês e ano são obrigatórios');
       return false;
     }
 
@@ -130,7 +137,7 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
     const currentMonth = currentDate.getMonth() + 1;
 
     if (formData.year > currentYear || (formData.year === currentYear && formData.month > currentMonth)) {
-      addToast('Não é possível adicionar registros de meses futuros', 'warning');
+      toast.warning('Não é possível adicionar registros de meses futuros');
       return false;
     }
 
@@ -139,29 +146,29 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
       record => record.month === formData.month && record.year === formData.year
     );
     if (isDuplicate) {
-      addToast(`Já existe um registro para ${monthNames[formData.month - 1]}/${formData.year}`, 'warning');
+      toast.warning(`Já existe um registro para ${monthNames[formData.month - 1]}/${formData.year}`);
       return false;
     }
 
     // Validar formato de horas extras
     if (!isValidTimeFormat(extraHoursInput)) {
-      addToast('Formato inválido para Horas Extras. Use HH:MM (ex: 01:30)', 'warning');
+      toast.warning('Formato inválido para Horas Extras. Use HH:MM (ex: 01:30)');
       return false;
     }
 
     // Validar formato de horas de atraso
     if (!isValidTimeFormat(lateHoursInput)) {
-      addToast('Formato inválido para Horas de Atraso. Use HH:MM (ex: 00:15)', 'warning');
+      toast.warning('Formato inválido para Horas de Atraso. Use HH:MM (ex: 00:15)');
       return false;
     }
 
     if (formData.extraHours < 0 || formData.lateHours < 0) {
-      addToast('Horas não podem ser negativas', 'warning');
+      toast.warning('Horas não podem ser negativas');
       return false;
     }
 
     if (!selectedFile) {
-      addToast('É obrigatório anexar o documento da folha de ponto', 'warning');
+      toast.warning('É obrigatório anexar o documento da folha de ponto');
       return false;
     }
 
@@ -207,7 +214,7 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
 
   return (
     <div
-      className={`fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 transition-opacity duration-200 ${isClosing ? 'opacity-0' : shouldAnimate ? 'opacity-100' : 'opacity-0'}`}
+      className={`fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 pt-16 transition-opacity duration-200 ${isClosing ? 'opacity-0' : shouldAnimate ? 'opacity-100' : 'opacity-0'}`}
       onClick={handleClose}
     >
       <div
@@ -216,8 +223,11 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
       >
         <div className="p-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Novo Registro Mensal</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Novo Registro Mensal</h2>
+              <p className="text-sm text-gray-600 mt-1">Registre suas horas extras e atrasos do mês</p>
+            </div>
             <button
               type="button"
               onClick={handleClose}
@@ -230,66 +240,87 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
             </button>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Mês e Ano */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mês <span className="text-red-600">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Mês <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={formData.month}
-                  onChange={(e) => setFormData({ ...formData, month: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent cursor-pointer"
+                <Select
+                  value={formData.month.toString()}
+                  onValueChange={(value) => setFormData({ ...formData, month: Number(value) })}
                   disabled={isSubmitting}
                 >
-                  {monthNames.map((name, index) => (
-                    <option key={index + 1} value={index + 1}>{name}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
+                    <SelectValue placeholder="Selecione o mês" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    {monthNames.map((name, index) => (
+                      <SelectItem
+                        key={index + 1}
+                        value={(index + 1).toString()}
+                        className="cursor-pointer"
+                      >
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ano <span className="text-red-600">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Ano <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="number"
-                  value={formData.year}
-                  onChange={(e) => setFormData({ ...formData, year: Number(e.target.value) })}
-                  min={2020}
-                  max={new Date().getFullYear()}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                <Select
+                  value={formData.year.toString()}
+                  onValueChange={(value) => setFormData({ ...formData, year: Number(value) })}
                   disabled={isSubmitting}
-                />
+                >
+                  <SelectTrigger className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
+                    <SelectValue placeholder="Selecione o ano" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    {Array.from({ length: new Date().getFullYear() - 2019 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                      <SelectItem
+                        key={year}
+                        value={year.toString()}
+                        className="cursor-pointer"
+                      >
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
             {/* Horas Extras e Atrasos */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Horas Extras <span className="text-red-600">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Horas Extras <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={extraHoursInput}
                   onChange={(e) => handleExtraHoursChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   placeholder="00:00"
                   disabled={isSubmitting}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Horas de Atraso <span className="text-red-600">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Horas de Atraso <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={lateHoursInput}
                   onChange={(e) => handleLateHoursChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   placeholder="00:00"
                   disabled={isSubmitting}
                 />
@@ -297,7 +328,7 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
             </div>
 
             {/* Saldo Calculado */}
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
               <p className="text-sm text-gray-700 mb-1">Saldo Mensal (calculado):</p>
               <p className={`text-2xl font-bold ${balanceColor}`}>
                 {calculatedBalance >= 0 ? '+' : ''}{balanceFormatted}
@@ -305,9 +336,9 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
             </div>
 
             {/* Upload de Documento */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Folha de Ponto (PDF/Imagem) <span className="text-red-600">*</span>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Folha de Ponto (PDF/Imagem) <span className="text-red-500">*</span>
               </label>
               <input
                 ref={fileInputRef}
@@ -342,19 +373,19 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
             </div>
 
             {/* Botões */}
-            <div className="flex gap-3">
+            <div className="flex justify-end gap-3 pt-4">
               <button
                 type="button"
                 onClick={handleClose}
                 disabled={isSubmitting}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Salvando...' : 'Salvar Registro'}
               </button>

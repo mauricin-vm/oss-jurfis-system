@@ -1,0 +1,2 @@
+- na página de horas extras, arrumar modais para manter o padrão (editar e deletar); 
+- ver tabela de usuários para permitir que tenha contas da jurfis e de outros setores; além disso tenha níveis de acesso (admin, funcionário e visualizador)

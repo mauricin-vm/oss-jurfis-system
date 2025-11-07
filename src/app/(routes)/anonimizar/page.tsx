@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { Separator } from '@/components/ui/separator';
 import { useState } from 'react';
 import { FileUpload } from '@/app/(routes)/anonimizar/ui/FileUpload';
 import { usePdfProcessor } from '@/app/(routes)/anonimizar/hooks/pdf-processor';
@@ -237,23 +239,35 @@ export default function AnonymizationPage() {
 
   //retorno da função
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="mx-auto max-w-7xl">
+    <>
+      {/* Header */}
+      <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+        <div className="flex items-center gap-2 px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <div className="flex items-center gap-2 text-sm">
+            <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+              Menu
+            </Link>
+            <span className="text-muted-foreground">/</span>
+            <span className="font-semibold">Anonimizar PDF</span>
+          </div>
+        </div>
+      </header>
 
-        {/* Header - apenas quando não está visualizando PDF */}
-        {!showPdfViewer && (
-          <div className="flex justify-between items-center mb-6">
+      {/* Conteúdo */}
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-screen bg-gray-50">
+        <div className="mx-auto max-w-7xl w-full">
 
-            {/* Título à esquerda com link de volta */}
-            <div className="text-left">
-              <div className="flex items-center gap-3 mb-2">
-                <Link href="/" className="text-blue-600 hover:text-blue-800 text-sm">
-                  ← Voltar ao Menu
-                </Link>
+          {/* Header - apenas quando não está visualizando PDF */}
+          {!showPdfViewer && (
+            <div className="flex justify-between items-center mb-6">
+
+              {/* Título à esquerda */}
+              <div className="text-left">
+                <h1 className="text-2xl font-bold text-gray-900">Anonimização de PDFs</h1>
+                <p className="text-gray-600 text-sm mt-1">Extração, junção e anonimização de documentos</p>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Anonimização de PDFs</h1>
-              <p className="text-gray-600 text-sm mt-1">Extração, junção e anonimização de documentos</p>
-            </div>
 
             {/* Configuração de diretório de entrada */}
             <div className="flex items-center gap-2">
@@ -545,7 +559,8 @@ export default function AnonymizationPage() {
           </div>
 
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };

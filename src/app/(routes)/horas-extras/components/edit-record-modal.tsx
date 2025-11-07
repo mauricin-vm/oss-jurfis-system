@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react';
-import { useToast } from './toast-context';
+import { toast } from 'sonner';
 import { OvertimeRecord, OvertimeFormData } from '../types';
 
 interface EditRecordModalProps {
@@ -17,7 +17,6 @@ const monthNames = [
 ];
 
 export function EditRecordModal({ isOpen, record, onClose, onSave }: EditRecordModalProps) {
-  const { addToast } = useToast();
   const [isClosing, setIsClosing] = useState(false);
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,13 +112,13 @@ export function EditRecordModal({ isOpen, record, onClose, onSave }: EditRecordM
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        addToast('Arquivo muito grande. Tamanho máximo: 10MB', 'error');
+        toast.error('Arquivo muito grande. Tamanho máximo: 10MB');
         return;
       }
 
       const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
       if (!validTypes.includes(file.type)) {
-        addToast('Tipo de arquivo inválido. Use PDF, PNG ou JPG', 'error');
+        toast.error('Tipo de arquivo inválido. Use PDF, PNG ou JPG');
         return;
       }
 
@@ -131,18 +130,18 @@ export function EditRecordModal({ isOpen, record, onClose, onSave }: EditRecordM
   const validateForm = (): boolean => {
     // Validar formato de horas extras
     if (!isValidTimeFormat(extraHoursInput)) {
-      addToast('Formato inválido para Horas Extras. Use HH:MM (ex: 01:30)', 'warning');
+      toast.warning('Formato inválido para Horas Extras. Use HH:MM (ex: 01:30)');
       return false;
     }
 
     // Validar formato de horas de atraso
     if (!isValidTimeFormat(lateHoursInput)) {
-      addToast('Formato inválido para Horas de Atraso. Use HH:MM (ex: 00:15)', 'warning');
+      toast.warning('Formato inválido para Horas de Atraso. Use HH:MM (ex: 00:15)');
       return false;
     }
 
     if (formData.extraHours < 0 || formData.lateHours < 0) {
-      addToast('Horas não podem ser negativas', 'warning');
+      toast.warning('Horas não podem ser negativas');
       return false;
     }
 

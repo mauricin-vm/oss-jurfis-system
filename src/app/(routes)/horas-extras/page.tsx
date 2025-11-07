@@ -3,20 +3,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { MdLock } from 'react-icons/md';
-import { Sidebar } from './components/sidebar';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import { toast } from 'sonner';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useSidebarConfig } from '@/contexts/sidebar-context';
 import { Dashboard } from './components/dashboard';
 import { RecordsTable } from './components/records-table';
 import { AddRecordModal } from './components/add-record-modal';
 import { EditRecordModal } from './components/edit-record-modal';
 import { DeleteModal } from './components/delete-modal';
-import { LoginModal } from './components/login-modal';
-import { RegisterModal } from './components/register-modal';
-import { ToastProvider, ToastContainer, useToast } from './components/toast-context';
+import { LoginModal } from '@/components/auth/login-modal';
+import { RegisterModal } from '@/components/auth/register-modal';
+import { DashboardSkeleton, TableSkeleton } from './components/skeleton-loader';
 import { OvertimeRecord, OvertimeFormData, OvertimeStats } from './types';
+import { Separator } from '@/components/ui/separator';
 
 function HorasExtrasContent() {
   const { data: session, status } = useSession();
-  const { addToast } = useToast();
+  const { updateConfig } = useSidebarConfig();
 
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -44,6 +49,27 @@ function HorasExtrasContent() {
   const isLoggedIn = !!session;
   const isCheckingSession = status === 'loading';
   const isAdmin = session?.user?.role === 'ADMIN';
+
+  // Configurar sidebar com ação "Novo Registro"
+  useEffect(() => {
+    if (isLoggedIn) {
+      updateConfig({
+        showAppSwitcher: true,
+        showUserAuth: true,
+        customActions: [{
+          label: 'Novo Registro',
+          icon: Plus,
+          onClick: () => setIsAddModalOpen(true),
+        }],
+      });
+    } else {
+      updateConfig({
+        showAppSwitcher: true,
+        showUserAuth: true,
+        customActions: [],
+      });
+    }
+  }, [isLoggedIn, updateConfig]);
 
   // Inicializar selectedUserId com o ID do usuário logado quando for admin
   useEffect(() => {
@@ -114,15 +140,15 @@ function HorasExtrasContent() {
         setRecords(data.records);
         calculateStats(data.records);
       } else {
-        addToast(data.error || 'Erro ao carregar registros', 'error');
+        toast.error(data.error || 'Erro ao carregar registros');
       }
     } catch (error) {
       console.error('Erro ao carregar registros:', error);
-      addToast('Erro ao carregar registros', 'error');
+      toast.error('Erro ao carregar registros');
     } finally {
       setRecordsLoaded(true);
     }
-  }, [selectedYear, selectedUserId, isAdmin, isCheckingSession, isLoggedIn, addToast, calculateStats]);
+  }, [selectedYear, selectedUserId, isAdmin, isCheckingSession, isLoggedIn, calculateStats]);
 
   useEffect(() => {
     loadRecords();
@@ -142,14 +168,14 @@ function HorasExtrasContent() {
       if (data.success) {
         setUsers(data.users);
       } else {
-        addToast(data.error || 'Erro ao carregar servidores', 'error');
+        toast.error(data.error || 'Erro ao carregar servidores');
       }
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);
     } finally {
       setUsersLoaded(true);
     }
-  }, [isAdmin, addToast]);
+  }, [isAdmin]);
 
   // Carregar usuários quando a sessão estiver pronta
   useEffect(() => {
@@ -202,14 +228,14 @@ function HorasExtrasContent() {
       const data = await response.json();
 
       if (data.success) {
-        addToast('Registro criado com sucesso!', 'success');
+        toast.success('Registro criado com sucesso!');
         loadRecords();
       } else {
-        addToast(data.error || 'Erro ao criar registro', 'error');
+        toast.error(data.error || 'Erro ao criar registro');
       }
     } catch (error) {
       console.error('Erro ao criar registro:', error);
-      addToast('Erro ao criar registro', 'error');
+      toast.error('Erro ao criar registro');
     }
   };
 
@@ -231,15 +257,15 @@ function HorasExtrasContent() {
       const data = await response.json();
 
       if (data.success) {
-        addToast('Registro atualizado com sucesso!', 'success');
+        toast.success('Registro atualizado com sucesso!');
         setSelectedRecord(null);
         loadRecords();
       } else {
-        addToast(data.error || 'Erro ao atualizar registro', 'error');
+        toast.error(data.error || 'Erro ao atualizar registro');
       }
     } catch (error) {
       console.error('Erro ao atualizar registro:', error);
-      addToast('Erro ao atualizar registro', 'error');
+      toast.error('Erro ao atualizar registro');
     }
   };
 
@@ -271,16 +297,16 @@ function HorasExtrasContent() {
       const data = await response.json();
 
       if (data.success) {
-        addToast('Registro excluído com sucesso!', 'success');
+        toast.success('Registro excluído com sucesso!');
         setIsDeleteModalOpen(false);
         setRecordToDelete(null);
         loadRecords();
       } else {
-        addToast(data.error || 'Erro ao excluir registro', 'error');
+        toast.error(data.error || 'Erro ao excluir registro');
       }
     } catch (error) {
       console.error('Erro ao excluir registro:', error);
-      addToast('Erro ao excluir registro', 'error');
+      toast.error('Erro ao excluir registro');
     }
   };
 
@@ -296,11 +322,11 @@ function HorasExtrasContent() {
         window.open(url, '_blank');
       } else {
         const data = await response.json();
-        addToast(data.error || 'Erro ao visualizar documento', 'error');
+        toast.error(data.error || 'Erro ao visualizar documento');
       }
     } catch (error) {
       console.error('Erro ao visualizar documento:', error);
-      addToast('Erro ao visualizar documento', 'error');
+      toast.error('Erro ao visualizar documento');
     }
   };
 
@@ -309,64 +335,66 @@ function HorasExtrasContent() {
     setIsEditModalOpen(true);
   };
 
-  // Mostrar loading inicial
-  if (showInitialLoading) {
-    return (
-      <div className="h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-gray-600 mt-4 text-lg">Carregando sistema...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Pegar registros existentes para validação
   const existingRecords = records.map(r => ({ month: r.month, year: r.year }));
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar
-        isAdmin={isAdmin}
-        userName={session?.user?.name}
-        userEmail={session?.user?.email}
-        userId={session?.user?.id}
-        selectedYear={selectedYear}
-        onYearChange={setSelectedYear}
-        selectedUserId={selectedUserId}
-        onUserChange={setSelectedUserId}
-        onNewRecord={() => setIsAddModalOpen(true)}
-        onLogin={() => setIsLoginModalOpen(true)}
-        users={users}
-      />
+    <>
+      {/* Header */}
+      <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+        <div className="flex items-center gap-2 px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <div className="flex items-center gap-2 text-sm">
+            <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+              Menu
+            </Link>
+            <span className="text-muted-foreground">/</span>
+            <span className="font-semibold">Horas Extras</span>
+          </div>
+        </div>
+      </header>
 
       {/* Conteúdo Principal */}
-      <div className="flex-1 flex flex-col p-6 overflow-y-auto">
-        {isLoggedIn ? (
-          <>
-            {/* Dashboard */}
-            <Dashboard stats={stats} selectedYear={selectedYear} />
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          {isLoggedIn ? (
+            showInitialLoading ? (
+              <>
+                {/* Skeleton Loading */}
+                <DashboardSkeleton />
+                <TableSkeleton />
+              </>
+            ) : (
+              <>
+                {/* Dashboard */}
+                <Dashboard stats={stats} selectedYear={selectedYear} />
 
-            {/* Tabela */}
-            <RecordsTable
-              records={records}
-              onEdit={handleEdit}
-              onDelete={handleDeleteRecord}
-              onViewDocument={handleViewDocument}
-              isAdmin={isAdmin}
-            />
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center max-w-md">
-              <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MdLock className="text-5xl text-gray-500" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Acesso Restrito</h2>
-              <p className="text-gray-600">
-                Faça login na barra lateral para acessar o sistema de gestão de horas extras
-              </p>
+                {/* Tabela com Filtros */}
+                <RecordsTable
+                  records={records}
+                  onEdit={handleEdit}
+                  onDelete={handleDeleteRecord}
+                  onViewDocument={handleViewDocument}
+                  isAdmin={isAdmin}
+                  users={users}
+                  selectedUserId={selectedUserId}
+                  onUserChange={setSelectedUserId}
+                  selectedYear={selectedYear}
+                  onYearChange={setSelectedYear}
+                  currentUserId={session?.user?.id}
+                />
+              </>
+            )
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center max-w-md">
+                <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MdLock className="text-5xl text-muted-foreground" />
+                </div>
+                <h2 className="text-xl font-bold mb-2">Acesso Restrito</h2>
+                <p className="text-muted-foreground">
+                  Faça login na barra lateral para acessar o sistema de horas extras
+                </p>
             </div>
           </div>
         )}
@@ -413,15 +441,10 @@ function HorasExtrasContent() {
         isOpen={isRegisterModalOpen}
         onClose={() => setIsRegisterModalOpen(false)}
       />
-    </div>
+    </>
   );
 }
 
 export default function HorasExtrasPage() {
-  return (
-    <ToastProvider>
-      <ToastContainer />
-      <HorasExtrasContent />
-    </ToastProvider>
-  );
+  return <HorasExtrasContent />;
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
-import { useToast } from './toast-context';
+import { toast } from 'sonner';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -11,7 +11,6 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ isOpen, onClose, onOpenRegister }: LoginModalProps) {
-  const { addToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -51,20 +50,20 @@ export function LoginModal({ isOpen, onClose, onOpenRegister }: LoginModalProps)
 
     // Validações
     if (!email.trim()) {
-      addToast('Email é obrigatório', 'warning');
+      toast.warning('Email é obrigatório');
       setIsLoading(false);
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      addToast('Email inválido', 'warning');
+      toast.warning('Email inválido');
       setIsLoading(false);
       return;
     }
 
     if (!password.trim()) {
-      addToast('Senha é obrigatória', 'warning');
+      toast.warning('Senha é obrigatória');
       setIsLoading(false);
       return;
     }
@@ -77,15 +76,15 @@ export function LoginModal({ isOpen, onClose, onOpenRegister }: LoginModalProps)
       });
 
       if (result?.error) {
-        addToast('Email ou senha inválidos', 'error');
+        toast.error('Email ou senha inválidos');
       } else {
-        addToast('Login realizado com sucesso!', 'success');
+        toast.success('Login realizado com sucesso!');
         handleClose();
         // A sessão será atualizada automaticamente pelo NextAuth
         // e o calendário recarregará via useEffect
       }
     } catch {
-      addToast('Erro ao fazer login', 'error');
+      toast.error('Erro ao fazer login');
     } finally {
       setIsLoading(false);
     }
@@ -95,14 +94,17 @@ export function LoginModal({ isOpen, onClose, onOpenRegister }: LoginModalProps)
 
   return (
     <div
-      className={`fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 transition-opacity duration-200 ${isClosing ? 'opacity-0' : shouldAnimate ? 'opacity-100' : 'opacity-0'}`}
+      className={`fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 pt-16 transition-opacity duration-200 ${isClosing ? 'opacity-0' : shouldAnimate ? 'opacity-100' : 'opacity-0'}`}
     >
       <div
         className={`bg-white rounded-lg shadow-xl max-w-md w-full transition-all duration-200 ${isClosing ? 'scale-95 opacity-0' : shouldAnimate ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
       >
         <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Login de Administrador</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Entrar na Conta</h2>
+              <p className="text-sm text-gray-600 mt-1">Acesse sua conta para gerenciar as horas extras</p>
+            </div>
             <button
               type="button"
               onClick={handleClose}
@@ -117,30 +119,34 @@ export function LoginModal({ isOpen, onClose, onOpenRegister }: LoginModalProps)
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Email <span className="text-red-500">*</span>
+              </label>
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="seu@email.com"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
+                placeholder="exemplo@email.com"
                 disabled={isLoading}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Senha <span className="text-red-500">*</span>
+              </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="••••••••"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
+                placeholder="Digite sua senha"
                 disabled={isLoading}
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t">
+            <div className="flex justify-end gap-3 pt-4">
               <button
                 type="button"
                 onClick={handleClose}
@@ -158,18 +164,21 @@ export function LoginModal({ isOpen, onClose, onOpenRegister }: LoginModalProps)
               </button>
             </div>
 
-            <div className="text-center pt-2 border-t">
-              <button
-                type="button"
-                onClick={() => {
-                  handleClose();
-                  setTimeout(() => onOpenRegister?.(), 250);
-                }}
-                disabled={isLoading}
-                className="text-sm text-gray-600 hover:text-gray-900 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                Não tem uma conta? <span className="font-semibold">Criar nova conta</span>
-              </button>
+            <div className="text-center pt-4 border-t">
+              <p className="text-sm text-gray-600">
+                Ainda não possui uma conta?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleClose();
+                    setTimeout(() => onOpenRegister?.(), 250);
+                  }}
+                  disabled={isLoading}
+                  className="font-semibold text-gray-900 hover:text-gray-700 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Clique aqui!
+                </button>
+              </p>
             </div>
           </form>
         </div>
