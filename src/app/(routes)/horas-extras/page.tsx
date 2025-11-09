@@ -22,7 +22,7 @@ import { Separator } from '@/components/ui/separator';
 
 function HorasExtrasContent() {
   const { data: session, status } = useSession();
-  const { updateConfig } = useSidebarConfig();
+  const { setConfig } = useSidebarConfig();
   const { apiFetch } = useApi();
 
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -60,7 +60,7 @@ function HorasExtrasContent() {
     }
 
     if (isLoggedIn && session?.user) {
-      updateConfig({
+      setConfig({
         showAppSwitcher: true,
         showUserAuth: true,
         customActions: [{
@@ -68,15 +68,19 @@ function HorasExtrasContent() {
           icon: Plus,
           onClick: () => setIsAddModalOpen(true),
         }],
+        customSections: [],
+        customContent: null,
       });
     } else {
-      updateConfig({
+      setConfig({
         showAppSwitcher: true,
         showUserAuth: true,
         customActions: [],
+        customSections: [],
+        customContent: null,
       });
     }
-  }, [isCheckingSession, isLoggedIn, session?.user, updateConfig]);
+  }, [isCheckingSession, isLoggedIn, session?.user, setConfig]);
 
   // Inicializar selectedUserId com o ID do usuário logado quando for admin
   useEffect(() => {

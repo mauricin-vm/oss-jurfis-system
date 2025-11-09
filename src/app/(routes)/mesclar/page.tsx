@@ -55,10 +55,10 @@ export default function MergePdfPage() {
       const newPdfFiles: PdfFile[] = await Promise.all(
         pdfFiles.map(async (file, index) => {
           try {
-            const { getDocument } = await import(`pdfjs-dist`);
+            const { PDFDocument } = await import(`pdf-lib`);
             const arrayBuffer = await file.arrayBuffer();
-            const pdf = await getDocument({ data: arrayBuffer }).promise;
-            const pages = pdf.numPages;
+            const pdfDoc = await PDFDocument.load(arrayBuffer);
+            const pages = pdfDoc.getPageCount();
             return { id: `${Date.now()}-${index}`, file, name: file.name, size: file.size, pages };
           } catch (error) {
             console.warn(`Erro ao detectar páginas do ${file.name}:`, error)

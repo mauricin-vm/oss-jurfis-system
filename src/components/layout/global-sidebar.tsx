@@ -3,6 +3,7 @@
 import { signOut, useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { useState } from 'react';
+import Link from 'next/link';
 
 import {
   Sidebar,
@@ -108,10 +109,10 @@ export function GlobalSidebar({ onLogin }: GlobalSidebarProps) {
                     isActive={item.active}
                   >
                     {item.href ? (
-                      <a href={item.href}>
+                      <Link href={item.href}>
                         {item.icon && <item.icon className="size-4" />}
                         <span>{item.label}</span>
-                      </a>
+                      </Link>
                     ) : (
                       <>
                         {item.icon && <item.icon className="size-4" />}

@@ -1,7 +1,7 @@
 'use client'
 
 //importar bibliotecas e funções
-import { getDocument } from 'pdfjs-dist';
+import { PDFDocument } from 'pdf-lib';
 import { useState, useCallback } from 'react';
 
 //função principal
@@ -26,8 +26,8 @@ export function usePdfProcessor() {
       };
 
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await getDocument({ data: arrayBuffer }).promise;
-      const totalPages = pdf.numPages;
+      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      const totalPages = pdfDoc.getPageCount();
       if (totalPages <= 0) {
         const error = `PDF não possui páginas válidas!`;
         setPdfInfo({ totalPages: null, isValid: false, error });

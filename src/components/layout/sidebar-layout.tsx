@@ -34,7 +34,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
   // Resetar configuração ao mudar de rota
   useEffect(() => {
-    // Configuração padrão baseada na rota
+    // Configuração padrão apenas para a home page
     if (pathname === '/') {
       // Home page: sem AppSwitcher, apenas login/logout
       setConfig({
@@ -43,15 +43,8 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
         customActions: [],
         customSections: [],
       });
-    } else {
-      // Outras rotas: com AppSwitcher e login/logout
-      setConfig({
-        showAppSwitcher: true,
-        showUserAuth: true,
-        customActions: [],
-        customSections: [],
-      });
     }
+    // Para outras rotas, não resetar - deixar que cada página configure seu próprio sidebar
   }, [pathname, setConfig]);
 
   // Mostrar spinner durante carregamento inicial

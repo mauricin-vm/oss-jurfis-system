@@ -20,7 +20,7 @@ import { Meeting, MeetingFormData } from './types';
 
 function CalendarioContent() {
   const { data: session, status } = useSession();
-  const { updateConfig } = useSidebarConfig();
+  const { setConfig } = useSidebarConfig();
   const { apiFetch } = useApi();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -52,7 +52,7 @@ function CalendarioContent() {
 
     // Se não estiver logado OU não for da organização JURFIS, mostrar apenas "Novo Agendamento"
     if (!isLoggedIn || !isFromJurfis) {
-      updateConfig({
+      setConfig({
         showAppSwitcher: true,
         showUserAuth: true,
         customContent: (
@@ -68,10 +68,11 @@ function CalendarioContent() {
             onClick: () => setIsRequestModalOpen(true),
           }
         ],
+        customSections: [],
       });
     } else {
       // Usuário logado e da JURFIS: mostrar botões de admin
-      updateConfig({
+      setConfig({
         showAppSwitcher: true,
         showUserAuth: true,
         customContent: (
@@ -92,9 +93,10 @@ function CalendarioContent() {
             onClick: () => setIsPendingRequestsModalOpen(true),
           }
         ],
+        customSections: [],
       });
     }
-  }, [isCheckingSession, isLoggedIn, isFromJurfis, selectedDate, updateConfig]);
+  }, [isCheckingSession, isLoggedIn, isFromJurfis, selectedDate, setConfig]);
 
   // Carregar reuniões
   const loadMeetings = useCallback(async () => {

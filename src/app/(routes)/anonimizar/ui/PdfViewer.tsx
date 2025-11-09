@@ -1,17 +1,16 @@
 'use client'
 
 //importar bibliotecas e funções
-import { Document, Page, pdfjs } from 'react-pdf';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
-//configurar worker do PDF.js
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`
+//tipos globais para PDF.js
+declare global {
+  interface Window {
+    pdfjsLib: any;
+  }
+}
 
 //função principal
-interface PDFPageProxy {
-  originalWidth: number,
-  originalHeight: number
-};
 interface SelectionArea {
   id: string,
   x: number,
@@ -38,21 +37,128 @@ export default function PdfViewer({ pdfUrl, onSelectionChange, disabled = false 
   const [currentSelection, setCurrentSelection] = useState<{ x: number, y: number, width: number, height: number, pageNumber: number } | null>(null)
   const [scale, setScale] = useState<number>(1.6)
   const [pageSizes, setPageSizes] = useState<{ [key: number]: { width: number, height: number } }>({})
+  const [pdfDoc, setPdfDoc] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [pdfJsReady, setPdfJsReady] = useState(false)
   const pageRefs = useRef<{ [key: number]: HTMLDivElement | null }>({})
+  const canvasRefs = useRef<{ [key: number]: HTMLCanvasElement | null }>({})
 
   //definir referências
   const containerRef = useRef<HTMLDivElement>(null)
 
-  //funções de gerenciamento do visualizador
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => setNumPages(numPages);
-  const onPageLoadSuccess = (page: PDFPageProxy, pageNumber: number) => {
-    setPageSizes(prev => ({
-      ...prev,
-      [pageNumber]: { width: page.originalWidth, height: page.originalHeight }
-    }));
-  };
+  //carregar PDF.js via CDN
+  useEffect(() => {
+    const loadPdfJs = () => {
+      return new Promise<void>((resolve, reject) => {
+        if (window.pdfjsLib) {
+          resolve();
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+
+        script.onload = () => {
+          if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+              'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            resolve();
+          } else {
+            reject(new Error('PDF.js não foi carregado'));
+          }
+        };
+
+        script.onerror = () => {
+          reject(new Error('Erro ao carregar PDF.js'));
+        };
+
+        document.body.appendChild(script);
+      });
+    };
+
+    const initPdf = async () => {
+      try {
+        await loadPdfJs();
+        setPdfJsReady(true);
+      } catch (err) {
+        console.error('Erro ao carregar PDF.js:', err);
+        setError('Erro ao carregar biblioteca PDF');
+        setIsLoading(false);
+      }
+    };
+
+    initPdf();
+  }, []);
+
+  //carregar documento PDF
+  useEffect(() => {
+    if (!pdfUrl || !pdfJsReady) return;
+
+    const loadPdf = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const loadingTask = window.pdfjsLib.getDocument(pdfUrl);
+        const pdf = await loadingTask.promise;
+
+        setPdfDoc(pdf);
+        setNumPages(pdf.numPages);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Erro ao carregar PDF:', err);
+        setError('Erro ao carregar o PDF');
+        setIsLoading(false);
+      }
+    };
+
+    loadPdf();
+  }, [pdfUrl, pdfJsReady]);
+
+  //renderizar páginas quando o documento estiver carregado
+  useEffect(() => {
+    if (!pdfDoc || numPages === 0) return;
+
+    const renderPages = async () => {
+      for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale });
+
+        // Armazenar tamanhos originais
+        setPageSizes(prev => ({
+          ...prev,
+          [pageNum]: {
+            width: viewport.width / scale,
+            height: viewport.height / scale
+          }
+        }));
+
+        const canvas = canvasRefs.current[pageNum];
+        if (!canvas) continue;
+
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport
+        };
+
+        await page.render(renderContext).promise;
+      }
+    };
+
+    renderPages();
+  }, [pdfDoc, numPages, scale]);
+
   const setPageRef = (pageNumber: number, ref: HTMLDivElement | null) => {
     pageRefs.current[pageNumber] = ref;
+  };
+
+  const setCanvasRef = (pageNumber: number, ref: HTMLCanvasElement | null) => {
+    canvasRefs.current[pageNumber] = ref;
   };
 
   const handleMouseDown = useCallback((event: React.MouseEvent, pageNumber: number) => {
@@ -170,74 +276,82 @@ export default function PdfViewer({ pdfUrl, onSelectionChange, disabled = false 
       {/* Visualizador do PDF */}
       <div className="flex-1 overflow-auto" ref={containerRef}>
         <div className="flex flex-col items-center p-4 space-y-4">
-          <Document
-            file={pdfUrl}
-            onLoadSuccess={onDocumentLoadSuccess}
-            className="shadow-lg"
-          >
-            {Array.from(new Array(numPages), (el, index) => {
-              const pageNumber = index + 1;
-              return (
-                <div key={pageNumber} className="mb-4 pb-4 border-b-3 border-dashed border-gray-300 last:border-b-0">
-                  <div className="text-center mb-2">
-                    <span className="text-sm font-medium bg-gray-900 text-white px-3 py-1 rounded">
-                      Página {pageNumber}
-                    </span>
-                  </div>
-                  <div
-                    ref={(ref) => setPageRef(pageNumber, ref)}
-                    className={`relative ${disabled ? 'cursor-not-allowed' : 'cursor-crosshair'}`}
-                    onMouseDown={(e) => handleMouseDown(e, pageNumber)}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                  >
-                    <Page
-                      pageNumber={pageNumber}
-                      scale={scale}
-                      renderTextLayer={false}
-                      renderAnnotationLayer={false}
-                      onLoadSuccess={(page) => onPageLoadSuccess(page, pageNumber)}
-                    />
+          {isLoading && (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Carregando PDF...</p>
+            </div>
+          )}
 
-                    {/* Renderizar seleções da página */}
-                    {selections
-                      .filter(selection => selection.pageNumber === pageNumber)
-                      .map(selection => (
-                        <div
-                          key={selection.id}
-                          className={`absolute border-2 border-red-500 bg-red-200 bg-opacity-30 group ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                          style={{
-                            left: selection.x * scale,
-                            top: selection.y * scale,
-                            width: selection.width * scale,
-                            height: selection.height * scale,
-                          }}
-                          onClick={() => !disabled && removeSelection(selection.id)}
-                        >
-                          <div className="absolute -top-6 left-0 bg-red-500 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                            Clique para remover
-                          </div>
-                        </div>
-                      ))}
+          {error && (
+            <div className="text-center py-12">
+              <p className="text-red-600">{error}</p>
+            </div>
+          )}
 
-                    {/* Renderizar seleção atual (enquanto arrasta) */}
-                    {currentSelection && isSelecting && currentSelection.pageNumber === pageNumber && (
-                      <div
-                        className="absolute border-2 border-blue-500 bg-blue-200 bg-opacity-30 pointer-events-none"
-                        style={{
-                          left: currentSelection.x,
-                          top: currentSelection.y,
-                          width: currentSelection.width,
-                          height: currentSelection.height,
-                        }}
+          {!isLoading && !error && numPages > 0 && (
+            <div className="shadow-lg">
+              {Array.from(new Array(numPages), (el, index) => {
+                const pageNumber = index + 1;
+                return (
+                  <div key={pageNumber} className="mb-4 pb-4 border-b-3 border-dashed border-gray-300 last:border-b-0">
+                    <div className="text-center mb-2">
+                      <span className="text-sm font-medium bg-gray-900 text-white px-3 py-1 rounded">
+                        Página {pageNumber}
+                      </span>
+                    </div>
+                    <div
+                      ref={(ref) => setPageRef(pageNumber, ref)}
+                      className={`relative ${disabled ? 'cursor-not-allowed' : 'cursor-crosshair'}`}
+                      onMouseDown={(e) => handleMouseDown(e, pageNumber)}
+                      onMouseMove={handleMouseMove}
+                      onMouseUp={handleMouseUp}
+                      onMouseLeave={handleMouseUp}
+                    >
+                      <canvas
+                        ref={(ref) => setCanvasRef(pageNumber, ref)}
+                        className="shadow-md"
                       />
-                    )}
+
+                      {/* Renderizar seleções da página */}
+                      {selections
+                        .filter(selection => selection.pageNumber === pageNumber)
+                        .map(selection => (
+                          <div
+                            key={selection.id}
+                            className={`absolute border-2 border-red-500 bg-red-200 bg-opacity-30 group ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                            style={{
+                              left: selection.x * scale,
+                              top: selection.y * scale,
+                              width: selection.width * scale,
+                              height: selection.height * scale,
+                            }}
+                            onClick={() => !disabled && removeSelection(selection.id)}
+                          >
+                            <div className="absolute -top-6 left-0 bg-red-500 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                              Clique para remover
+                            </div>
+                          </div>
+                        ))}
+
+                      {/* Renderizar seleção atual (enquanto arrasta) */}
+                      {currentSelection && isSelecting && currentSelection.pageNumber === pageNumber && (
+                        <div
+                          className="absolute border-2 border-blue-500 bg-blue-200 bg-opacity-30 pointer-events-none"
+                          style={{
+                            left: currentSelection.x,
+                            top: currentSelection.y,
+                            width: currentSelection.width,
+                            height: currentSelection.height,
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </Document>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

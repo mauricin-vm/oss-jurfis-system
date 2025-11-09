@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronsUpDown, Calendar, MessageSquare, Scale, Clock, Files, Lock } from "lucide-react"
+import { ChevronsUpDown, Calendar, MessageSquare, Scale, Clock, Files, Search } from "lucide-react"
 import { usePathname } from "next/navigation"
 
 import {
@@ -26,10 +26,11 @@ export function AppSwitcher() {
 
   const apps = [
     {
-      name: "Horas Extras",
-      description: "Controle individual",
-      icon: Clock,
-      href: "/horas-extras",
+      name: "Buscar Acórdãos",
+      description: "Consultar acórdãos",
+      icon: Search,
+      href: "#",
+      disabled: true,
     },
     {
       name: "Calendário",
@@ -52,21 +53,28 @@ export function AppSwitcher() {
       disabled: true,
     },
     {
-      name: "Mesclar PDF",
-      description: "Unir documentos",
-      icon: Files,
-      href: "/mesclar",
+      name: "Horas Extras",
+      description: "Controle individual",
+      icon: Clock,
+      href: "/horas-extras",
     },
     {
-      name: "Anonimizar PDF",
-      description: "Proteção de dados",
-      icon: Lock,
-      href: "/anonimizar",
+      name: "Manipular Documentos",
+      description: "Processar PDFs",
+      icon: Files,
+      href: "/documentos/mesclar",
     },
   ]
 
   // Detectar app ativo baseado na rota
-  const activeApp = apps.find(app => pathname.startsWith(app.href) && app.href !== "#") || {
+  const activeApp = apps.find(app => {
+    if (app.href === "#") return false;
+    // Para rotas de documentos, verificar se começa com /documentos
+    if (app.href.startsWith('/documentos')) {
+      return pathname.startsWith('/documentos');
+    }
+    return pathname.startsWith(app.href);
+  }) || {
     name: "Horas Extras",
     description: "Controle individual",
     icon: Clock,
@@ -74,7 +82,13 @@ export function AppSwitcher() {
   }
 
   // Filtrar apps removendo o ativo
-  const otherApps = apps.filter(app => app.href !== activeApp.href)
+  const otherApps = apps.filter(app => {
+    // Se o app ativo é de documentos, filtrar qualquer rota que comece com /documentos
+    if (activeApp.href.startsWith('/documentos') && app.href.startsWith('/documentos')) {
+      return false;
+    }
+    return app.href !== activeApp.href;
+  })
 
   return (
     <SidebarMenu>
