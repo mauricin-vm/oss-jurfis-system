@@ -23,8 +23,10 @@ export async function GET(req: NextRequest) {
     const year = searchParams.get('year');
     const userId = searchParams.get('userId');
 
-    // Filtros
-    const where: Prisma.OvertimeRecordWhereInput = {};
+    // Filtros - IMPORTANTE: Filtrar por organização do admin
+    const where: Prisma.OvertimeRecordWhereInput = {
+      organizationId: session.user.organizationId
+    };
 
     if (year) {
       where.year = parseInt(year);
@@ -47,7 +49,8 @@ export async function GET(req: NextRequest) {
       },
       orderBy: [
         { year: 'desc' },
-        { month: 'desc' }
+        { month: 'desc' },
+        { createdAt: 'desc' }
       ]
     });
 

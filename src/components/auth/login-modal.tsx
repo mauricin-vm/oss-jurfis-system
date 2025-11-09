@@ -81,7 +81,6 @@ export function LoginModal({ isOpen, onClose, onOpenRegister }: LoginModalProps)
         toast.success('Login realizado com sucesso!');
         handleClose();
         // A sessão será atualizada automaticamente pelo NextAuth
-        // e o calendário recarregará via useEffect
       }
     } catch {
       toast.error('Erro ao fazer login');

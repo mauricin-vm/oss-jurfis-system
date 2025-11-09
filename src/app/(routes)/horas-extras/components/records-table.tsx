@@ -121,7 +121,7 @@ export function RecordsTable({
                     value={selectedUserId || currentUserId || ''}
                     onValueChange={(value) => onUserChange(value || null)}
                   >
-                    <SelectTrigger className="h-10 rounded-md border bg-background hover:bg-accent/50 focus:ring-1 focus:ring-ring transition-colors">
+                    <SelectTrigger className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
                       <SelectValue placeholder="Selecione um servidor" />
                     </SelectTrigger>
                     <SelectContent className="rounded-md">
@@ -147,7 +147,7 @@ export function RecordsTable({
                   value={selectedYear?.toString() || 'todos'}
                   onValueChange={(value) => onYearChange(value === 'todos' ? null : Number(value))}
                 >
-                  <SelectTrigger className="h-10 rounded-md border bg-background hover:bg-accent/50 focus:ring-1 focus:ring-ring transition-colors">
+                  <SelectTrigger className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
                     <SelectValue placeholder="Selecione um período" />
                   </SelectTrigger>
                   <SelectContent className="rounded-md">

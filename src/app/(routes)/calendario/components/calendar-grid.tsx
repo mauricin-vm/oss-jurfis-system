@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react';
 import { Meeting } from '../types';
 import { MeetingCard } from './meeting-card';
 
@@ -22,8 +23,27 @@ export function CalendarGrid({
   onDeleteMeeting,
   isLoading = false
 }: CalendarGridProps) {
-  // Gerar array com 4 dias a partir da data inicial
-  const days = Array.from({ length: 4 }, (_, i) => {
+  const [daysToShow, setDaysToShow] = useState(4);
+
+  // Detectar tamanho da tela e ajustar número de dias
+  useEffect(() => {
+    const updateDaysToShow = () => {
+      if (window.innerWidth < 640) {
+        setDaysToShow(1); // Mobile: 1 dia
+      } else if (window.innerWidth < 1024) {
+        setDaysToShow(2); // Tablet: 2 dias
+      } else {
+        setDaysToShow(4); // Desktop: 4 dias
+      }
+    };
+
+    updateDaysToShow();
+    window.addEventListener('resize', updateDaysToShow);
+    return () => window.removeEventListener('resize', updateDaysToShow);
+  }, []);
+
+  // Gerar array com número dinâmico de dias
+  const days = Array.from({ length: daysToShow }, (_, i) => {
     const date = new Date(startDate);
     date.setDate(date.getDate() + i);
     return date;
@@ -74,8 +94,15 @@ export function CalendarGrid({
     };
   };
 
+  // Gerar grid template columns dinamicamente
+  const getGridColumns = () => {
+    const timeColumn = daysToShow === 1 ? '60px' : '80px';
+    const dayColumns = Array(daysToShow).fill('1fr').join(' ');
+    return `${timeColumn} ${dayColumns}`;
+  };
+
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm h-full flex flex-col relative">
+    <div className="bg-card border rounded-lg shadow-sm h-full flex flex-col relative overflow-hidden">
       {/* Overlay de loading para recarregamentos */}
       {isLoading && (
         <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-20 flex items-center justify-center rounded-lg">
@@ -87,20 +114,19 @@ export function CalendarGrid({
       )}
 
       {/* Container com scroll que contém tudo */}
-      <div className="flex-1 overflow-y-scroll">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {/* Cabeçalho com dias - sticky */}
-        <div className="sticky top-0 z-30 grid border-b bg-gray-50" style={{ gridTemplateColumns: '80px 1fr 1fr 1fr 1fr' }}>
-          <div className="p-3 font-semibold text-gray-600 text-sm text-center border-r">Horário</div>
+        <div className="sticky top-0 z-30 grid border-b bg-muted" style={{ gridTemplateColumns: getGridColumns() }}>
+          <div className="p-3 font-semibold text-muted-foreground text-sm text-center border-r">
+            {daysToShow === 1 ? 'Hr' : 'Horário'}
+          </div>
           {days.map((day, i) => {
             const { text, isToday } = formatDate(day);
             return (
-              <div key={i} className={`p-3 text-center ${i < 3 ? 'border-r' : ''}`}>
-                <div className="font-semibold text-gray-900">
+              <div key={i} className={`p-3 text-center ${i < daysToShow - 1 ? 'border-r' : ''}`}>
+                <div className="font-semibold text-foreground">
                   {text}
                 </div>
-                {isToday && (
-                  <div className="text-xs text-gray-500 mt-1">Hoje</div>
-                )}
               </div>
             );
           })}
@@ -109,14 +135,14 @@ export function CalendarGrid({
         {/* Grade de horários */}
         <div>
           {HOURS.map(hour => (
-            <div key={hour} className="grid border-b last:border-b-0 hover:bg-gray-50 transition-colors" style={{ gridTemplateColumns: '80px 1fr 1fr 1fr 1fr' }}>
-              <div className="p-3 text-sm font-medium text-gray-600 border-r bg-gray-50/50 text-center">
+            <div key={hour} className="grid border-b last:border-b-0 hover:bg-muted/40 transition-colors" style={{ gridTemplateColumns: getGridColumns() }}>
+              <div className="p-3 text-sm font-medium text-muted-foreground border-r bg-muted/30 text-center">
                 {hour}:00
               </div>
               {days.map((day, i) => {
                 const dayMeetings = getDayMeetings(day, hour);
                 return (
-                  <div key={i} className={`min-h-[80px] relative ${i < 3 ? 'border-r' : ''}`}>
+                  <div key={i} className={`min-h-[80px] relative bg-white ${i < daysToShow - 1 ? 'border-r' : ''}`}>
                     {dayMeetings.map((meeting) => (
                       <MeetingCard
                         key={meeting.id}

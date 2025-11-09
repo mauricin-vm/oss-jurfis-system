@@ -2,18 +2,26 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { Sidebar } from './components/sidebar';
+import { Plus, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import Link from 'next/link';
+import { toast } from 'sonner';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { Separator } from '@/components/ui/separator';
+import { useSidebarConfig } from '@/contexts/sidebar-context';
+import { useApi } from '@/hooks/use-api';
+import { MiniCalendar } from './components/mini-calendar';
 import { CalendarGrid } from './components/calendar-grid';
 import { AdminModal } from './components/admin-modal';
 import { RequestModal } from './components/request-modal';
 import { PendingRequestsModal } from './components/pending-requests-modal';
 import { DeleteModal } from './components/delete-modal';
-import { ToastProvider, ToastContainer, useToast } from './components/toast-context';
+import { CalendarGridSkeleton } from './components/skeleton-loader';
 import { Meeting, MeetingFormData } from './types';
 
 function CalendarioContent() {
   const { data: session, status } = useSession();
-  const { addToast } = useToast();
+  const { updateConfig } = useSidebarConfig();
+  const { apiFetch } = useApi();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -24,30 +32,77 @@ function CalendarioContent() {
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [meetingToDelete, setMeetingToDelete] = useState<{ id: string; title: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [hasRenderedOnce, setHasRenderedOnce] = useState(false);
 
-  const isAdmin = !!session;
+  const isAdmin = session?.user?.role === 'ADMIN';
   const isCheckingSession = status === 'loading';
+  const showInitialLoading = isInitialLoad;
 
-  // Loading de tela cheia: apenas na primeira vez que abre a página (F5)
-  // Depois que renderiza uma vez, usa apenas overlay
-  const showInitialLoading = !hasRenderedOnce && (isCheckingSession || isLoading);
+  // Verificar se o usuário pertence à organização 'Junta de Recursos Fiscais'
+  const isFromJurfis = session?.user?.organizationName === 'Junta de Recursos Fiscais';
+  const isLoggedIn = !!session;
+
+  // Configurar sidebar com custom actions e mini calendário
+  useEffect(() => {
+    // Não configurar enquanto está verificando a sessão
+    if (isCheckingSession) {
+      return;
+    }
+
+    // Se não estiver logado OU não for da organização JURFIS, mostrar apenas "Novo Agendamento"
+    if (!isLoggedIn || !isFromJurfis) {
+      updateConfig({
+        showAppSwitcher: true,
+        showUserAuth: true,
+        customContent: (
+          <MiniCalendar
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+          />
+        ),
+        customActions: [
+          {
+            label: 'Novo Agendamento',
+            icon: Plus,
+            onClick: () => setIsRequestModalOpen(true),
+          }
+        ],
+      });
+    } else {
+      // Usuário logado e da JURFIS: mostrar botões de admin
+      updateConfig({
+        showAppSwitcher: true,
+        showUserAuth: true,
+        customContent: (
+          <MiniCalendar
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+          />
+        ),
+        customActions: [
+          {
+            label: 'Novo Agendamento',
+            icon: Plus,
+            onClick: () => setIsAdminModalOpen(true),
+          },
+          {
+            label: 'Solicitações Pendentes',
+            icon: Clock,
+            onClick: () => setIsPendingRequestsModalOpen(true),
+          }
+        ],
+      });
+    }
+  }, [isCheckingSession, isLoggedIn, isFromJurfis, selectedDate, updateConfig]);
 
   // Carregar reuniões
   const loadMeetings = useCallback(async () => {
-    // Não carregar se ainda estiver verificando a sessão
     if (isCheckingSession) {
       return;
     }
 
     setIsLoading(true);
-
-    // Só mostrar overlay de loading se demorar mais de 300ms
-    const loadingTimer = setTimeout(() => {
-      setShowLoadingOverlay(true);
-    }, 300);
 
     try {
       // Iniciar no começo do dia (00:00:00)
@@ -59,13 +114,13 @@ function CalendarioContent() {
       endDate.setDate(endDate.getDate() + 3);
       endDate.setHours(23, 59, 59, 999);
 
-      const endpoint = isAdmin ? '/api/meetings/admin' : '/api/meetings';
+      const endpoint = isFromJurfis ? '/api/meetings/admin' : '/api/meetings';
       const params = new URLSearchParams({
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString()
       });
 
-      const response = await fetch(`${endpoint}?${params.toString()}`, {
+      const response = await apiFetch(`${endpoint}?${params.toString()}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache'
@@ -79,34 +134,35 @@ function CalendarioContent() {
     } catch (error) {
       console.error('Erro ao carregar reuniões:', error);
     } finally {
-      clearTimeout(loadingTimer);
       setIsLoading(false);
-      setShowLoadingOverlay(false);
     }
-  }, [selectedDate, isAdmin, isCheckingSession]);
+  }, [selectedDate, isFromJurfis, isCheckingSession, apiFetch]);
 
   useEffect(() => {
     loadMeetings();
   }, [loadMeetings]);
 
-  // Recarregar reuniões quando refreshTrigger mudar (após aprovar/rejeitar solicitação)
+  // Recarregar reuniões quando refreshTrigger mudar
   useEffect(() => {
     if (refreshTrigger > 0) {
       loadMeetings();
     }
   }, [refreshTrigger, loadMeetings]);
 
-  // Marcar que a página foi renderizada pela primeira vez
-  // Isso acontece quando sai do loading inicial (sessão verificada + dados carregados)
+  // Controlar loading inicial
   useEffect(() => {
-    if (!isCheckingSession && !isLoading && !hasRenderedOnce) {
-      setHasRenderedOnce(true);
+    if (isCheckingSession) {
+      return;
     }
-  }, [isCheckingSession, isLoading, hasRenderedOnce]);
+
+    if (!isLoading) {
+      setIsInitialLoad(false);
+    }
+  }, [isCheckingSession, isLoading]);
 
   const handleCreateMeeting = async (formData: MeetingFormData) => {
     try {
-      const response = await fetch('/api/meetings', {
+      const response = await apiFetch('/api/meetings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -117,13 +173,13 @@ function CalendarioContent() {
       if (data.success) {
         setIsAdminModalOpen(false);
         loadMeetings();
-        addToast('Reunião criada com sucesso!', 'success');
+        toast.success('Reunião criada com sucesso!');
       } else {
-        addToast(data.error || 'Erro ao criar reunião', 'error');
+        toast.error(data.error || 'Erro ao criar reunião');
       }
     } catch (error) {
       console.error('Erro ao criar reunião:', error);
-      addToast('Erro ao criar reunião', 'error');
+      toast.error('Erro ao criar reunião');
     }
   };
 
@@ -131,7 +187,7 @@ function CalendarioContent() {
     if (!selectedMeeting) return;
 
     try {
-      const response = await fetch(`/api/meetings/${selectedMeeting.id}`, {
+      const response = await apiFetch(`/api/meetings/${selectedMeeting.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -143,18 +199,17 @@ function CalendarioContent() {
         setIsAdminModalOpen(false);
         setSelectedMeeting(null);
         loadMeetings();
-        addToast('Reunião atualizada com sucesso!', 'success');
+        toast.success('Reunião atualizada com sucesso!');
       } else {
-        addToast(data.error || 'Erro ao atualizar reunião', 'error');
+        toast.error(data.error || 'Erro ao atualizar reunião');
       }
     } catch (error) {
       console.error('Erro ao atualizar reunião:', error);
-      addToast('Erro ao atualizar reunião', 'error');
+      toast.error('Erro ao atualizar reunião');
     }
   };
 
   const handleDeleteMeeting = (id: string) => {
-    // Encontrar a reunião para pegar o título
     const meeting = meetings.find(m => m.id === id);
     if (!meeting) return;
 
@@ -166,7 +221,7 @@ function CalendarioContent() {
     if (!meetingToDelete) return;
 
     try {
-      const response = await fetch(`/api/meetings/${meetingToDelete.id}`, {
+      const response = await apiFetch(`/api/meetings/${meetingToDelete.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason })
@@ -176,15 +231,15 @@ function CalendarioContent() {
 
       if (data.success) {
         loadMeetings();
-        addToast('Reunião excluída com sucesso! Email de cancelamento enviado.', 'success');
+        toast.success('Reunião excluída com sucesso! Email de cancelamento enviado.');
         setIsDeleteModalOpen(false);
         setMeetingToDelete(null);
       } else {
-        addToast(data.error || 'Erro ao excluir reunião', 'error');
+        toast.error(data.error || 'Erro ao excluir reunião');
       }
     } catch (error) {
       console.error('Erro ao excluir reunião:', error);
-      addToast('Erro ao excluir reunião', 'error');
+      toast.error('Erro ao excluir reunião');
     }
   };
 
@@ -206,60 +261,40 @@ function CalendarioContent() {
     }
   };
 
-  // Mostrar loading unificado enquanto verifica sessão e carrega dados iniciais
-  if (showInitialLoading) {
-    return (
-      <div className="h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-gray-600 mt-4 text-lg">Carregando calendário...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar
-        isAdmin={isAdmin}
-        userName={session?.user?.name}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-        onNewMeeting={handleNewMeeting}
-        onRequestMeeting={() => setIsRequestModalOpen(true)}
-        onPendingRequests={() => setIsPendingRequestsModalOpen(true)}
-        refreshTrigger={refreshTrigger}
-      />
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+        <div className="flex items-center gap-2 px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <div className="flex items-center gap-2 text-sm">
+            <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+              Menu
+            </Link>
+            <span className="text-muted-foreground">/</span>
+            <span className="font-semibold">Calendário</span>
+          </div>
+        </div>
+      </header>
 
       {/* Conteúdo Principal */}
-      <div className="flex-1 flex flex-col p-4 overflow-hidden">
-        {/* Header compacto */}
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Calendário de Reuniões - JURFIS
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            {selectedDate.toLocaleDateString('pt-BR', {
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric'
-            })}
-          </p>
-        </div>
-
-        {/* Calendário */}
-        <div className="flex-1 overflow-hidden">
-          <CalendarGrid
-            key={`${refreshTrigger}-${meetings.length}`}
-            startDate={selectedDate}
-            meetings={meetings}
-            isAdmin={isAdmin}
-            onEditMeeting={handleEditMeeting}
-            onDeleteMeeting={handleDeleteMeeting}
-            isLoading={showLoadingOverlay}
-          />
-        </div>
+      <div className="flex-1 p-4 pt-0 overflow-hidden">
+        {showInitialLoading ? (
+          <CalendarGridSkeleton />
+        ) : (
+          <div className="h-full">
+            <CalendarGrid
+              key={`${refreshTrigger}-${meetings.length}`}
+              startDate={selectedDate}
+              meetings={meetings}
+              isAdmin={isAdmin}
+              onEditMeeting={handleEditMeeting}
+              onDeleteMeeting={handleDeleteMeeting}
+              isLoading={false}
+            />
+          </div>
+        )}
       </div>
 
       {/* Modais */}
@@ -305,10 +340,5 @@ function CalendarioContent() {
 }
 
 export default function CalendarioPage() {
-  return (
-    <ToastProvider>
-      <ToastContainer />
-      <CalendarioContent />
-    </ToastProvider>
-  );
+  return <CalendarioContent />;
 }

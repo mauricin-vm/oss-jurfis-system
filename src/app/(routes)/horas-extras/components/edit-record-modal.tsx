@@ -179,7 +179,7 @@ export function EditRecordModal({ isOpen, record, onClose, onSave }: EditRecordM
 
   return (
     <div
-      className={`fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 transition-opacity duration-200 ${isClosing ? 'opacity-0' : shouldAnimate ? 'opacity-100' : 'opacity-0'}`}
+      className={`fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 pt-16 transition-opacity duration-200 ${isClosing ? 'opacity-0' : shouldAnimate ? 'opacity-100' : 'opacity-0'}`}
       onClick={handleClose}
     >
       <div
@@ -187,8 +187,12 @@ export function EditRecordModal({ isOpen, record, onClose, onSave }: EditRecordM
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Editar Registro</h2>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Editar Registro</h2>
+              <p className="text-sm text-gray-600 mt-1">Atualize as informações do registro mensal</p>
+            </div>
             <button
               type="button"
               onClick={handleClose}
@@ -201,9 +205,9 @@ export function EditRecordModal({ isOpen, record, onClose, onSave }: EditRecordM
             </button>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Mês/Ano (somente leitura) */}
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
               <p className="text-sm text-gray-700 mb-1">Período:</p>
               <p className="text-lg font-semibold text-gray-900">
                 {monthNames[record.month - 1]} / {record.year}
@@ -211,30 +215,30 @@ export function EditRecordModal({ isOpen, record, onClose, onSave }: EditRecordM
             </div>
 
             {/* Horas Extras e Atrasos */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Horas Extras <span className="text-red-600">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Horas Extras <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={extraHoursInput}
                   onChange={(e) => handleExtraHoursChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   placeholder="00:00"
                   disabled={isSubmitting}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Horas de Atraso <span className="text-red-600">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Horas de Atraso <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={lateHoursInput}
                   onChange={(e) => handleLateHoursChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   placeholder="00:00"
                   disabled={isSubmitting}
                 />
@@ -242,17 +246,17 @@ export function EditRecordModal({ isOpen, record, onClose, onSave }: EditRecordM
             </div>
 
             {/* Saldo Calculado */}
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-700 mb-1">Novo Saldo Mensal:</p>
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-sm text-gray-700 mb-1">Novo Saldo Mensal (calculado):</p>
               <p className={`text-2xl font-bold ${balanceColor}`}>
                 {calculatedBalance >= 0 ? '+' : ''}{balanceFormatted}
               </p>
             </div>
 
             {/* Upload de Documento */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Atualizar Documento
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Atualizar Folha de Ponto
               </label>
 
               {keepExistingDocument && record.documentPath && (
@@ -289,25 +293,29 @@ export function EditRecordModal({ isOpen, record, onClose, onSave }: EditRecordM
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     <span className="truncate max-w-xs">{selectedFile.name}</span>
+                    <span className="text-gray-500">({(selectedFile.size / 1024).toFixed(0)} KB)</span>
                   </div>
                 )}
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Formatos aceitos: PDF, PNG, JPG (máx. 10MB)
+              </p>
             </div>
 
             {/* Botões */}
-            <div className="flex gap-3">
+            <div className="flex justify-end gap-3 pt-4">
               <button
                 type="button"
                 onClick={handleClose}
                 disabled={isSubmitting}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
               </button>

@@ -27,32 +27,39 @@ export function AppSwitcher() {
   const apps = [
     {
       name: "Horas Extras",
+      description: "Controle individual",
       icon: Clock,
       href: "/horas-extras",
     },
     {
       name: "Calendário",
+      description: "Sala Alberto Kalachi",
       icon: Calendar,
       href: "/calendario",
     },
     {
       name: "Chat de Atendimento",
+      description: "Atendimento online",
       icon: MessageSquare,
-      href: "/chat",
+      href: "#",
+      disabled: true,
     },
     {
       name: "Controle de Recursos",
+      description: "Gestão de processos",
       icon: Scale,
       href: "#",
       disabled: true,
     },
     {
       name: "Mesclar PDF",
+      description: "Unir documentos",
       icon: Files,
       href: "/mesclar",
     },
     {
       name: "Anonimizar PDF",
+      description: "Proteção de dados",
       icon: Lock,
       href: "/anonimizar",
     },
@@ -61,6 +68,7 @@ export function AppSwitcher() {
   // Detectar app ativo baseado na rota
   const activeApp = apps.find(app => pathname.startsWith(app.href) && app.href !== "#") || {
     name: "Horas Extras",
+    description: "Controle individual",
     icon: Clock,
     href: "/horas-extras",
   }
@@ -82,7 +90,7 @@ export function AppSwitcher() {
               </div>
               <div className="grid flex-1 text-left leading-tight">
                 <span className="truncate text-sm font-medium">{activeApp.name}</span>
-                <span className="truncate text-xs text-muted-foreground">Controle individual</span>
+                <span className="truncate text-xs text-muted-foreground">{activeApp.description}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -104,7 +112,6 @@ export function AppSwitcher() {
                       <app.icon className="!h-3.5 !w-3.5 shrink-0 text-muted-foreground/70" />
                     </div>
                     {app.name}
-                    <span className="ml-auto text-xs text-muted-foreground">Em breve</span>
                   </DropdownMenuItem>
                 ) : (
                   <Link href={app.href}>

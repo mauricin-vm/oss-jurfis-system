@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react';
+import { signIn } from 'next-auth/react';
 import { toast } from 'sonner';
 
 interface RegisterModalProps {
@@ -118,9 +119,24 @@ export function RegisterModal({ isOpen, onClose, onSuccess }: RegisterModalProps
         return;
       }
 
-      toast.success('Conta criada com sucesso! Você já pode fazer login.');
-      handleClose();
-      onSuccess?.();
+      // Conta criada com sucesso, fazer login automático
+      toast.success('Conta criada com sucesso! Fazendo login...');
+
+      const loginResult = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      });
+
+      if (loginResult?.error) {
+        toast.error('Conta criada, mas houve erro ao fazer login. Por favor, faça login manualmente.');
+        handleClose();
+        onSuccess?.();
+      } else {
+        toast.success('Login realizado com sucesso!');
+        handleClose();
+        onSuccess?.();
+      }
     } catch {
       toast.error('Erro ao criar conta');
     } finally {

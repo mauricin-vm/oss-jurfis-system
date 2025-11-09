@@ -43,6 +43,12 @@ export async function PUT(
 
     // Verificar permissão (usuário só pode editar seus próprios registros, exceto admin)
     const isAdmin = session.user.role === 'ADMIN';
+
+    // Verificar se o registro pertence à organização do usuário
+    if (existingRecord.organizationId !== session.user.organizationId) {
+      return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 403 });
+    }
+
     if (!isAdmin && existingRecord.userId !== user.id) {
       return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 403 });
     }
@@ -96,7 +102,7 @@ export async function PUT(
     });
 
     // Recalcular saldos acumulados de todos os registros
-    await recalculateAllBalances(user.id);
+    await recalculateAllBalances(user.id, session.user.organizationId);
 
     return NextResponse.json({ success: true, record });
   } catch (error) {
@@ -139,6 +145,12 @@ export async function DELETE(
 
     // Verificar permissão (usuário só pode excluir seus próprios registros, exceto admin)
     const isAdmin = session.user.role === 'ADMIN';
+
+    // Verificar se o registro pertence à organização do usuário
+    if (record.organizationId !== session.user.organizationId) {
+      return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 403 });
+    }
+
     if (!isAdmin && record.userId !== user.id) {
       return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 403 });
     }
@@ -161,7 +173,7 @@ export async function DELETE(
     });
 
     // Recalcular saldos acumulados
-    await recalculateAllBalances(user.id);
+    await recalculateAllBalances(user.id, session.user.organizationId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -171,12 +183,16 @@ export async function DELETE(
 }
 
 // Função auxiliar para recalcular todos os saldos acumulados
-async function recalculateAllBalances(userId: string) {
+async function recalculateAllBalances(userId: string, organizationId?: string) {
   const allRecords = await prisma.overtimeRecord.findMany({
-    where: { userId },
+    where: {
+      userId,
+      ...(organizationId && { organizationId })
+    },
     orderBy: [
       { year: 'asc' },
-      { month: 'asc' }
+      { month: 'asc' },
+      { createdAt: 'asc' }
     ]
   });
 

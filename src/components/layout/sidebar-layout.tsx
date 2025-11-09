@@ -20,7 +20,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Rotas que NÃO usam sidebar global (usam sidebars customizadas)
-  const routesWithoutGlobalSidebar = ['/chat', '/calendario'];
+  const routesWithoutGlobalSidebar = ['/chat'];
 
   // Verificar se deve mostrar sidebar global
   const shouldShowSidebar = !routesWithoutGlobalSidebar.some(route => pathname.startsWith(route));

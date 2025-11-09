@@ -63,29 +63,30 @@ export default function Home() {
           </Link>
 
           {/* Card Chat de Atendimento */}
-          <Link href="/chat" className="group">
-            <Card className="h-full transition-all hover:shadow-md p-6 gap-3">
-              <CardHeader className="p-0">
-                <div className="flex items-center gap-4 mb-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted transition-transform group-hover:scale-110">
-                    <IoChatbubbles className="h-6 w-6 text-foreground" />
-                  </div>
-                  <CardTitle className="text-xl">Chat de Atendimento</CardTitle>
+          <Card className="h-full relative opacity-60 p-6 gap-3">
+            <div className="absolute top-3 right-3 bg-muted text-muted-foreground text-xs font-medium px-2 py-1 rounded-md">
+              Em breve
+            </div>
+            <CardHeader className="p-0">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+                  <IoChatbubbles className="h-6 w-6 text-foreground" />
                 </div>
-                <CardDescription>
-                  Sistema de atendimento via WhatsApp
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Integração com WhatsApp</li>
-                  <li>• Marcadores inteligentes</li>
-                  <li>• Atendimento automático</li>
-                  <li>• Interface amigável</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </Link>
+                <CardTitle className="text-xl">Chat de Atendimento</CardTitle>
+              </div>
+              <CardDescription>
+                Sistema de atendimento via WhatsApp
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>• Integração com WhatsApp</li>
+                <li>• Marcadores inteligentes</li>
+                <li>• Atendimento automático</li>
+                <li>• Interface amigável</li>
+              </ul>
+            </CardContent>
+          </Card>
 
           {/* Card Controle de Recursos */}
           <Card className="h-full relative opacity-60 p-6 gap-3">

@@ -25,6 +25,7 @@ export interface SidebarConfig {
   showUserAuth: boolean;
   customActions?: SidebarAction[];
   customSections?: SidebarSection[];
+  customContent?: React.ReactNode;
 }
 
 interface SidebarContextType {
@@ -40,6 +41,7 @@ const defaultConfig: SidebarConfig = {
   showUserAuth: true,
   customActions: [],
   customSections: [],
+  customContent: null,
 };
 
 export function SidebarConfigProvider({ children }: { children: ReactNode }) {

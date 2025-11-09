@@ -15,7 +15,6 @@ interface AddRecordModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (formData: OvertimeFormData) => Promise<void>;
-  existingRecords: Array<{ month: number; year: number }>;
 }
 
 const monthNames = [
@@ -23,8 +22,8 @@ const monthNames = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
-export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: AddRecordModalProps) {
-  
+export function AddRecordModal({ isOpen, onClose, onSave }: AddRecordModalProps) {
+
   const [isClosing, setIsClosing] = useState(false);
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -141,15 +140,6 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
       return false;
     }
 
-    // Verificar duplicação
-    const isDuplicate = existingRecords.some(
-      record => record.month === formData.month && record.year === formData.year
-    );
-    if (isDuplicate) {
-      toast.warning(`Já existe um registro para ${monthNames[formData.month - 1]}/${formData.year}`);
-      return false;
-    }
-
     // Validar formato de horas extras
     if (!isValidTimeFormat(extraHoursInput)) {
       toast.warning('Formato inválido para Horas Extras. Use HH:MM (ex: 01:30)');
@@ -164,11 +154,6 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
 
     if (formData.extraHours < 0 || formData.lateHours < 0) {
       toast.warning('Horas não podem ser negativas');
-      return false;
-    }
-
-    if (!selectedFile) {
-      toast.warning('É obrigatório anexar o documento da folha de ponto');
       return false;
     }
 
@@ -338,7 +323,7 @@ export function AddRecordModal({ isOpen, onClose, onSave, existingRecords }: Add
             {/* Upload de Documento */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Folha de Ponto (PDF/Imagem) <span className="text-red-500">*</span>
+                Folha de Ponto
               </label>
               <input
                 ref={fileInputRef}

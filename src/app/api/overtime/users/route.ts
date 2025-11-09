@@ -20,8 +20,15 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Acesso negado. Apenas administradores podem acessar.' }, { status: 403 });
     }
 
-    // Buscar todos os usuários do sistema
+    // Buscar apenas usuários da mesma organização do admin
     const users = await prisma.user.findMany({
+      where: {
+        organizationMembers: {
+          some: {
+            organizationId: session.user.organizationId
+          }
+        }
+      },
       select: {
         id: true,
         name: true,

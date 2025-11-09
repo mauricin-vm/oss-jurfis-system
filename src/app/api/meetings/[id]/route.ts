@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
-import { sendCancellationEmail, sendUpdateEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/email';
+import { getCancellationEmailTemplate, getUpdateEmailTemplate } from '@/app/(routes)/calendario/templates';
 
 const prisma = new PrismaClient();
 
@@ -41,9 +42,9 @@ export async function PUT(
         date: meetingDate,
         startTime,
         endTime,
-        requestedBy,
-        email,
-        phone,
+        requestedBy: requestedBy || null,
+        email: email || null,
+        phone: phone || null,
         notes: notes || null
       }
     });
@@ -59,13 +60,13 @@ export async function PUT(
 
     // Enviar email de alteração se data ou horário mudaram e a reunião está aprovada
     if ((dateChanged || startTimeChanged || endTimeChanged) && oldMeeting.status === 'APPROVED' && oldMeeting.email) {
-      const emailSent = await sendUpdateEmail(
+      const emailHtml = getUpdateEmailTemplate(
         {
           title: oldMeeting.title,
           date: oldDateString,
           startTime: oldMeeting.startTime,
           endTime: oldMeeting.endTime,
-          requestedBy: oldMeeting.requestedBy,
+          requestedBy: oldMeeting.requestedBy || 'Solicitante não informado',
           email: oldMeeting.email,
           phone: oldMeeting.phone || ''
         },
@@ -74,14 +75,20 @@ export async function PUT(
           date: newDateString,
           startTime,
           endTime,
-          requestedBy,
+          requestedBy: requestedBy || 'Solicitante não informado',
           email,
           phone
         }
       );
 
-      if (!emailSent) {
-        console.warn('Reunião atualizada, mas email de alteração não foi enviado');
+      const result = await sendEmail({
+        to: oldMeeting.email,
+        subject: 'Reunião Reagendada - JURFIS/SEFAZ',
+        html: emailHtml
+      });
+
+      if (!result.success) {
+        console.warn('Reunião atualizada, mas email de alteração não foi enviado:', result.error);
       }
     }
 
@@ -127,21 +134,27 @@ export async function DELETE(
       const meetingDate = new Date(meeting.date);
       const dateString = `${meetingDate.getFullYear()}-${String(meetingDate.getMonth() + 1).padStart(2, '0')}-${String(meetingDate.getDate()).padStart(2, '0')}`;
 
-      const emailSent = await sendCancellationEmail(
+      const emailHtml = getCancellationEmailTemplate(
         {
           title: meeting.title,
           date: dateString,
           startTime: meeting.startTime,
           endTime: meeting.endTime,
-          requestedBy: meeting.requestedBy,
+          requestedBy: meeting.requestedBy || 'Solicitante não informado',
           email: meeting.email,
           phone: meeting.phone || ''
         },
         reason || 'Motivo não informado'
       );
 
-      if (!emailSent) {
-        console.warn('Reunião excluída, mas email de cancelamento não foi enviado');
+      const result = await sendEmail({
+        to: meeting.email,
+        subject: 'Reunião Cancelada - JURFIS/SEFAZ',
+        html: emailHtml
+      });
+
+      if (!result.success) {
+        console.warn('Reunião excluída, mas email de cancelamento não foi enviado:', result.error);
       }
     }
 

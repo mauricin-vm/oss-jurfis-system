@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
-import { sendApprovalEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/email';
+import { getApprovalEmailTemplate } from '@/app/(routes)/calendario/templates';
 
 const prisma = new PrismaClient();
 
@@ -50,7 +51,7 @@ export async function PUT(
       const meetingDate = new Date(meeting.date);
       const dateString = `${meetingDate.getFullYear()}-${String(meetingDate.getMonth() + 1).padStart(2, '0')}-${String(meetingDate.getDate()).padStart(2, '0')}`;
 
-      const emailSent = await sendApprovalEmail({
+      const emailHtml = getApprovalEmailTemplate({
         title: meeting.title,
         date: dateString,
         startTime: meeting.startTime,
@@ -60,8 +61,14 @@ export async function PUT(
         phone: meeting.phone || ''
       });
 
-      if (!emailSent) {
-        console.warn('Reunião aprovada, mas email não foi enviado');
+      const result = await sendEmail({
+        to: meeting.email,
+        subject: 'Solicitação Confirmada - JURFIS/SEFAZ',
+        html: emailHtml
+      });
+
+      if (!result.success) {
+        console.warn('Reunião aprovada, mas email não foi enviado:', result.error);
       }
     }
 

@@ -54,6 +54,8 @@ export function GlobalSidebar({ onLogin }: GlobalSidebarProps) {
   const userName = session?.user?.name;
   const userEmail = session?.user?.email;
   const isAdmin = session?.user?.role === 'ADMIN';
+  const organizationName = session?.user?.organizationName;
+  const role = session?.user?.role;
 
   return (
     <Sidebar collapsible="icon">
@@ -65,8 +67,15 @@ export function GlobalSidebar({ onLogin }: GlobalSidebarProps) {
       )}
 
       <SidebarContent>
+        {/* Custom Content (ex: Mini Calendário) */}
+        {config.customContent && (
+          <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+            {config.customContent}
+          </SidebarGroup>
+        )}
+
         {/* Custom Actions */}
-        {isLoggedIn && config.customActions && config.customActions.length > 0 && (
+        {config.customActions && config.customActions.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Ações</SidebarGroupLabel>
             <SidebarMenu>
@@ -124,6 +133,8 @@ export function GlobalSidebar({ onLogin }: GlobalSidebarProps) {
             userName={userName}
             userEmail={userEmail}
             isAdmin={isAdmin}
+            organizationName={organizationName}
+            role={role}
             onLogout={handleLogout}
             onLogin={handleLogin}
           />

@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useSidebarConfig } from '@/contexts/sidebar-context';
+import { useApi } from '@/hooks/use-api';
 import { Dashboard } from './components/dashboard';
 import { RecordsTable } from './components/records-table';
 import { AddRecordModal } from './components/add-record-modal';
@@ -22,6 +23,7 @@ import { Separator } from '@/components/ui/separator';
 function HorasExtrasContent() {
   const { data: session, status } = useSession();
   const { updateConfig } = useSidebarConfig();
+  const { apiFetch } = useApi();
 
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -52,7 +54,12 @@ function HorasExtrasContent() {
 
   // Configurar sidebar com ação "Novo Registro"
   useEffect(() => {
-    if (isLoggedIn) {
+    // Não configurar enquanto está verificando a sessão
+    if (isCheckingSession) {
+      return;
+    }
+
+    if (isLoggedIn && session?.user) {
       updateConfig({
         showAppSwitcher: true,
         showUserAuth: true,
@@ -69,7 +76,7 @@ function HorasExtrasContent() {
         customActions: [],
       });
     }
-  }, [isLoggedIn, updateConfig]);
+  }, [isCheckingSession, isLoggedIn, session?.user, updateConfig]);
 
   // Inicializar selectedUserId com o ID do usuário logado quando for admin
   useEffect(() => {
@@ -108,7 +115,7 @@ function HorasExtrasContent() {
 
   // Carregar registros
   const loadRecords = useCallback(async () => {
-    if (isCheckingSession || !isLoggedIn) {
+    if (isCheckingSession || !isLoggedIn || !session?.user) {
       return;
     }
 
@@ -129,7 +136,7 @@ function HorasExtrasContent() {
         params.append('userId', selectedUserId);
       }
 
-      const response = await fetch(`${endpoint}?${params.toString()}`, {
+      const response = await apiFetch(`${endpoint}?${params.toString()}`, {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' }
       });
@@ -148,7 +155,7 @@ function HorasExtrasContent() {
     } finally {
       setRecordsLoaded(true);
     }
-  }, [selectedYear, selectedUserId, isAdmin, isCheckingSession, isLoggedIn, calculateStats]);
+  }, [selectedYear, selectedUserId, isAdmin, isCheckingSession, isLoggedIn, session?.user, calculateStats, apiFetch]);
 
   useEffect(() => {
     loadRecords();
@@ -156,13 +163,13 @@ function HorasExtrasContent() {
 
   // Carregar usuários (se for admin)
   const loadUsers = useCallback(async () => {
-    if (!isAdmin) {
+    if (!isAdmin || !session?.user) {
       setUsersLoaded(true);
       return;
     }
 
     try {
-      const response = await fetch('/api/overtime/users');
+      const response = await apiFetch('/api/overtime/users');
       const data = await response.json();
 
       if (data.success) {
@@ -175,14 +182,14 @@ function HorasExtrasContent() {
     } finally {
       setUsersLoaded(true);
     }
-  }, [isAdmin]);
+  }, [isAdmin, session?.user, apiFetch]);
 
   // Carregar usuários quando a sessão estiver pronta
   useEffect(() => {
-    if (!isCheckingSession && isLoggedIn) {
+    if (!isCheckingSession && isLoggedIn && session?.user) {
       loadUsers();
     }
-  }, [isCheckingSession, isLoggedIn, loadUsers]);
+  }, [isCheckingSession, isLoggedIn, session?.user, loadUsers]);
 
   // Controlar o loading inicial - só termina quando tudo estiver carregado
   useEffect(() => {
@@ -220,7 +227,7 @@ function HorasExtrasContent() {
         formDataToSend.append('document', formData.document);
       }
 
-      const response = await fetch('/api/overtime', {
+      const response = await apiFetch('/api/overtime', {
         method: 'POST',
         body: formDataToSend
       });
@@ -249,7 +256,7 @@ function HorasExtrasContent() {
         formDataToSend.append('document', formData.document);
       }
 
-      const response = await fetch(`/api/overtime/${id}`, {
+      const response = await apiFetch(`/api/overtime/${id}`, {
         method: 'PUT',
         body: formDataToSend
       });
@@ -290,7 +297,7 @@ function HorasExtrasContent() {
     if (!recordToDelete) return;
 
     try {
-      const response = await fetch(`/api/overtime/${recordToDelete.id}`, {
+      const response = await apiFetch(`/api/overtime/${recordToDelete.id}`, {
         method: 'DELETE'
       });
 
@@ -313,7 +320,7 @@ function HorasExtrasContent() {
   // Visualizar documento
   const handleViewDocument = async (id: string) => {
     try {
-      const response = await fetch(`/api/overtime/document/${id}`);
+      const response = await apiFetch(`/api/overtime/document/${id}`);
 
       if (response.ok) {
         // Criar blob e abrir em nova aba
@@ -335,9 +342,6 @@ function HorasExtrasContent() {
     setIsEditModalOpen(true);
   };
 
-  // Pegar registros existentes para validação
-  const existingRecords = records.map(r => ({ month: r.month, year: r.year }));
-
   return (
     <>
       {/* Header */}
@@ -357,7 +361,13 @@ function HorasExtrasContent() {
 
       {/* Conteúdo Principal */}
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          {isLoggedIn ? (
+          {isCheckingSession ? (
+            <>
+              {/* Skeleton Loading enquanto verifica sessão */}
+              <DashboardSkeleton />
+              <TableSkeleton />
+            </>
+          ) : isLoggedIn && session?.user ? (
             showInitialLoading ? (
               <>
                 {/* Skeleton Loading */}
@@ -405,7 +415,6 @@ function HorasExtrasContent() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSave={handleAddRecord}
-        existingRecords={existingRecords}
       />
 
       <EditRecordModal

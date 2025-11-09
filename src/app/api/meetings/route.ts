@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { PrismaClient, MeetingStatus } from '@prisma/client';
-import { sendApprovalEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/email';
+import { getApprovalEmailTemplate } from '@/app/(routes)/calendario/templates';
 
 const prisma = new PrismaClient();
 
@@ -58,10 +59,10 @@ export async function POST(req: NextRequest) {
 
     const { title, date, startTime, endTime, requestedBy, email, phone, notes } = await req.json();
 
-    if (!title || !date || !startTime || !endTime || !requestedBy || !email || !phone) {
+    if (!title || !date || !startTime || !endTime) {
       return NextResponse.json({
         success: false,
-        error: 'Campos obrigatórios faltando'
+        error: 'Campos obrigatórios faltando (título, data, horário inicial e final)'
       }, { status: 400 });
     }
 
@@ -75,9 +76,9 @@ export async function POST(req: NextRequest) {
         date: meetingDate,
         startTime,
         endTime,
-        requestedBy,
-        email,
-        phone,
+        requestedBy: requestedBy || null,
+        email: email || null,
+        phone: phone || null,
         notes: notes || null,
         status: 'APPROVED' // Reunião criada manualmente já é aprovada
       }
@@ -88,18 +89,24 @@ export async function POST(req: NextRequest) {
       // Formatar data como YYYY-MM-DD sem conversão de timezone
       const dateString = `${meetingDate.getFullYear()}-${String(meetingDate.getMonth() + 1).padStart(2, '0')}-${String(meetingDate.getDate()).padStart(2, '0')}`;
 
-      const emailSent = await sendApprovalEmail({
+      const emailHtml = getApprovalEmailTemplate({
         title,
         date: dateString,
         startTime,
         endTime,
-        requestedBy,
+        requestedBy: requestedBy || 'Solicitante não informado',
         email,
-        phone
+        phone: phone || ''
       });
 
-      if (!emailSent) {
-        console.warn('Reunião criada, mas email de confirmação não foi enviado');
+      const result = await sendEmail({
+        to: email,
+        subject: 'Solicitação Confirmada - JURFIS/SEFAZ',
+        html: emailHtml
+      });
+
+      if (!result.success) {
+        console.warn('Reunião criada, mas email de confirmação não foi enviado:', result.error);
       }
     }
 

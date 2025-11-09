@@ -22,11 +22,25 @@ export const authOptions: NextAuthOptions = {
         if (!user) return null;
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
         if (!isPasswordValid) return null;
+
+        // Buscar a primeira organização do usuário
+        const orgMember = await prisma.organizationMember.findFirst({
+          where: { userId: user.id },
+          include: { organization: true }
+        });
+
+        if (!orgMember) {
+          // Usuário sem organização não pode fazer login
+          return null;
+        }
+
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: orgMember.role,
+          organizationId: orgMember.organizationId,
+          organizationName: orgMember.organization.name,
         };
       }
     })
@@ -39,11 +53,72 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user }) {
-      if (user) return { ...token, id: user.id, role: user.role };
+      if (user) {
+        return {
+          ...token,
+          id: user.id,
+          role: user.role,
+          organizationId: user.organizationId,
+          organizationName: user.organizationName,
+        };
+      }
       return token;
     },
     async session({ token, session }) {
-      return { ...session, user: { ...session.user, id: token.id, role: token.role } };
+      if (!token || !token.email) {
+        return session;
+      }
+
+      // Validar se o usuário ainda existe no banco
+      try {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: token.email as string },
+          include: {
+            organizationMembers: {
+              include: {
+                organization: true
+              }
+            }
+          }
+        });
+
+        // Se usuário não existe mais ou não tem organização, retornar sessão vazia
+        if (!dbUser || dbUser.organizationMembers.length === 0) {
+          return {
+            ...session,
+            user: undefined as any,
+            expires: new Date(0).toISOString(), // Expirar sessão
+          };
+        }
+
+        // Atualizar dados da sessão com informações atualizadas
+        const orgMember = dbUser.organizationMembers[0];
+        return {
+          ...session,
+          user: {
+            ...session.user,
+            id: token.id,
+            email: dbUser.email,
+            name: dbUser.name,
+            role: orgMember.role,
+            organizationId: orgMember.organizationId,
+            organizationName: orgMember.organization.name,
+          }
+        };
+      } catch (error) {
+        console.error('Erro ao validar sessão:', error);
+        // Em caso de erro, retornar sessão básica sem validação
+        return {
+          ...session,
+          user: {
+            ...session.user,
+            id: token.id,
+            role: token.role,
+            organizationId: token.organizationId,
+            organizationName: token.organizationName,
+          }
+        };
+      }
     }
   }
 };

@@ -41,6 +41,12 @@ export async function GET(
 
     // Verificar permissão (usuário só pode ver seus próprios documentos, exceto admin)
     const isAdmin = session.user.role === 'ADMIN';
+
+    // Verificar se o registro pertence à organização do usuário
+    if (record.organizationId !== session.user.organizationId) {
+      return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 403 });
+    }
+
     if (!isAdmin && record.userId !== user.id) {
       return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 403 });
     }

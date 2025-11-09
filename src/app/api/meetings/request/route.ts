@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { sendAdminNotification } from '@/lib/email';
+import { sendEmail, emailConfig } from '@/lib/email';
+import { getAdminNotificationTemplate } from '@/app/(routes)/calendario/templates';
+import { formatPhoneToDatabase } from '@/lib/validations';
 
 const prisma = new PrismaClient();
 
@@ -48,14 +50,17 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Validação de telefone (formato básico)
-    const phoneRegex = /^[\d\s\-\(\)]+$/;
-    if (!phoneRegex.test(phone)) {
+    // Validação de telefone usando a função de formatação
+    const phoneValidation = formatPhoneToDatabase(phone, '67');
+    if (!phoneValidation.formated) {
       return NextResponse.json({
         success: false,
-        error: 'Telefone inválido'
+        error: phoneValidation.message || 'Telefone inválido'
       }, { status: 400 });
     }
+
+    // Usar o telefone formatado/validado
+    const validatedPhone = phoneValidation.phone;
 
     // Converter a data para o início do dia (00:00:00) sem conversão de timezone
     // Usar split para extrair ano, mês e dia e criar Date diretamente
@@ -113,7 +118,7 @@ export async function POST(req: NextRequest) {
         endTime,
         requestedBy,
         email,
-        phone,
+        phone: validatedPhone, // Usar telefone validado
         notes: notes || null,
         status: 'PENDING'
       }
@@ -124,7 +129,7 @@ export async function POST(req: NextRequest) {
     const meetingDate = new Date(meeting.date);
     const dateString = `${meetingDate.getFullYear()}-${String(meetingDate.getMonth() + 1).padStart(2, '0')}-${String(meetingDate.getDate()).padStart(2, '0')}`;
 
-    await sendAdminNotification({
+    const emailHtml = getAdminNotificationTemplate({
       title: meeting.title,
       date: dateString,
       startTime: meeting.startTime,
@@ -132,6 +137,12 @@ export async function POST(req: NextRequest) {
       requestedBy: meeting.requestedBy,
       email: meeting.email || '',
       phone: meeting.phone || ''
+    });
+
+    await sendEmail({
+      to: emailConfig.adminEmail,
+      subject: 'Solicitação de Reunião - JURFIS/SEFAZ',
+      html: emailHtml
     });
 
     return NextResponse.json({

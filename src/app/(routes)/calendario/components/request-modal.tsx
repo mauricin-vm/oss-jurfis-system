@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react';
+import { Info } from 'lucide-react';
+import { toast } from 'sonner';
+import { useApi } from '@/hooks/use-api';
 import { MeetingRequestFormData } from '../types';
-import { useToast } from './toast-context';
+import { formatPhoneForDisplay, formatPhoneToRaw, formatPhoneToDatabase } from '@/lib/validations';
 
 interface RequestModalProps {
   isOpen: boolean;
@@ -11,7 +14,7 @@ interface RequestModalProps {
 }
 
 export function RequestModal({ isOpen, onClose, onSuccess }: RequestModalProps) {
-  const { addToast } = useToast();
+  const { apiFetch } = useApi();
   const [isClosing, setIsClosing] = useState(false);
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,53 +65,95 @@ export function RequestModal({ isOpen, onClose, onSuccess }: RequestModalProps) 
     }, 200);
   };
 
+  // Handler para formatar telefone enquanto digita
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const onlyNumbers = formatPhoneToRaw(value);
+    const formatted = formatPhoneForDisplay(onlyNumbers);
+
+    // Atualizar o campo com valor formatado para visualização
+    e.target.value = formatted;
+
+    // Salvar apenas números no estado
+    setFormData({ ...formData, phone: onlyNumbers });
+  };
+
+  // Handler para finalizar formatação do telefone
+  const handlePhoneBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const onlyNumbers = formatPhoneToRaw(value);
+
+    // Converter para formato do banco com DDD padrão 67
+    const result = formatPhoneToDatabase(onlyNumbers, '67');
+
+    if (result.formated) {
+      // Exibir formatado
+      const formatted = formatPhoneForDisplay(result.phone);
+      e.target.value = formatted;
+      // Salvar apenas números no estado
+      setFormData({ ...formData, phone: result.phone });
+    } else {
+      // Se falhou a validação, manter o valor digitado
+      const formatted = formatPhoneForDisplay(onlyNumbers);
+      e.target.value = formatted;
+      setFormData({ ...formData, phone: onlyNumbers });
+    }
+  };
+
   const validateForm = (): boolean => {
     // Validações de campos obrigatórios
     if (!formData.title.trim()) {
-      addToast('Título é obrigatório', 'warning');
+      toast.warning('Título é obrigatório');
       return false;
     }
 
     if (!formData.date) {
-      addToast('Data é obrigatória', 'warning');
+      toast.warning('Data é obrigatória');
       return false;
     }
 
     if (!formData.startTime) {
-      addToast('Horário inicial é obrigatório', 'warning');
+      toast.warning('Horário inicial é obrigatório');
       return false;
     }
 
     if (!formData.endTime) {
-      addToast('Horário final é obrigatório', 'warning');
+      toast.warning('Horário final é obrigatório');
       return false;
     }
 
     if (!formData.requestedBy.trim()) {
-      addToast('Nome é obrigatório', 'warning');
+      toast.warning('Nome é obrigatório');
       return false;
     }
 
     if (!formData.email.trim()) {
-      addToast('Email é obrigatório', 'warning');
+      toast.warning('Email é obrigatório');
       return false;
     }
 
     // Validação de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      addToast('Email inválido', 'warning');
+      toast.warning('Email inválido');
       return false;
     }
 
     if (!formData.phone.trim()) {
-      addToast('Telefone é obrigatório', 'warning');
+      toast.warning('Telefone é obrigatório');
+      return false;
+    }
+
+    // Validação de telefone
+    const phoneResult = formatPhoneToDatabase(formData.phone, '67');
+    if (!phoneResult.formated) {
+      toast.warning(phoneResult.message || 'Telefone inválido');
       return false;
     }
 
     // Validação de horários
     if (formData.startTime >= formData.endTime) {
-      addToast('Horário final deve ser posterior ao inicial', 'warning');
+      toast.warning('Horário final deve ser posterior ao inicial');
       return false;
     }
 
@@ -126,7 +171,7 @@ export function RequestModal({ isOpen, onClose, onSuccess }: RequestModalProps) 
 
     try {
       // Primeiro, verificar se há conflito de horário
-      const conflictResponse = await fetch('/api/meetings/check-conflict', {
+      const conflictResponse = await apiFetch('/api/meetings/check-conflict', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -139,13 +184,13 @@ export function RequestModal({ isOpen, onClose, onSuccess }: RequestModalProps) 
       const conflictData = await conflictResponse.json();
 
       if (conflictData.hasConflict) {
-        addToast(conflictData.message || 'Já existe uma reunião agendada neste horário. Por favor, escolha outro horário.', 'warning');
+        toast.warning(conflictData.message || 'Já existe uma reunião agendada neste horário. Por favor, escolha outro horário.');
         setIsSubmitting(false);
         return;
       }
 
       // Se não há conflito, prosseguir com a solicitação
-      const response = await fetch('/api/meetings/request', {
+      const response = await apiFetch('/api/meetings/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -154,15 +199,15 @@ export function RequestModal({ isOpen, onClose, onSuccess }: RequestModalProps) 
       const data = await response.json();
 
       if (data.success) {
-        addToast('Solicitação enviada com sucesso! Em breve, um email será enviado com a confirmação ou rejeição.', 'success');
+        toast.success('Solicitação enviada com sucesso! Em breve, um email será enviado com a confirmação ou rejeição.');
         handleClose();
         onSuccess?.();
       } else {
-        addToast(data.error || 'Erro ao enviar solicitação', 'error');
+        toast.error(data.error || 'Erro ao enviar solicitação');
       }
     } catch (error) {
       console.error('Erro ao enviar solicitação:', error);
-      addToast('Erro ao enviar solicitação. Tente novamente.', 'error');
+      toast.error('Erro ao enviar solicitação. Tente novamente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -172,7 +217,7 @@ export function RequestModal({ isOpen, onClose, onSuccess }: RequestModalProps) 
 
   return (
     <div
-      className={`fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 transition-opacity duration-200 ${isClosing ? 'opacity-0' : shouldAnimate ? 'opacity-100' : 'opacity-0'}`}
+      className={`fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 pt-16 transition-opacity duration-200 ${isClosing ? 'opacity-0' : shouldAnimate ? 'opacity-100' : 'opacity-0'}`}
       onClick={handleClose}
     >
       <div
@@ -180,10 +225,11 @@ export function RequestModal({ isOpen, onClose, onSuccess }: RequestModalProps) 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">
-              Solicitar Agendamento
-            </h2>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Novo Agendamento</h2>
+              <p className="text-sm text-gray-600 mt-1">Solicite o agendamento da Sala Alberto Kalachi (CAC, 4° andar, sala 4)</p>
+            </div>
             <button
               type="button"
               onClick={handleClose}
@@ -196,23 +242,17 @@ export function RequestModal({ isOpen, onClose, onSuccess }: RequestModalProps) 
             </button>
           </div>
 
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-            <p className="text-xs text-yellow-800">
-              <strong>Informação:</strong> a solicitação será analisada e, em breve, receberá um email com a confirmação ou rejeição do agendamento.
-            </p>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Título */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Título (visível ao público) <span className="text-red-600">*</span>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Título <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                 placeholder="Ex: Reunião de Planejamento"
                 disabled={isSubmitting}
               />
@@ -221,40 +261,40 @@ export function RequestModal({ isOpen, onClose, onSuccess }: RequestModalProps) 
             {/* Data e Horários */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Data <span className="text-red-600">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Data <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   disabled={isSubmitting}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Início <span className="text-red-600">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Início <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="time"
                   value={formData.startTime}
                   onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   disabled={isSubmitting}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Término <span className="text-red-600">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Término <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="time"
                   value={formData.endTime}
                   onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   disabled={isSubmitting}
                 />
               </div>
@@ -262,14 +302,14 @@ export function RequestModal({ isOpen, onClose, onSuccess }: RequestModalProps) 
 
             {/* Nome do Solicitante */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nome do Solicitante <span className="text-red-600">*</span>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Nome do Solicitante <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.requestedBy}
                 onChange={(e) => setFormData({ ...formData, requestedBy: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                 placeholder="Seu nome completo"
                 disabled={isSubmitting}
               />
@@ -278,29 +318,30 @@ export function RequestModal({ isOpen, onClose, onSuccess }: RequestModalProps) 
             {/* Email e Telefone */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email <span className="text-red-600">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Email <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   placeholder="seu@email.com"
                   disabled={isSubmitting}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Telefone <span className="text-red-600">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Telefone <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                  placeholder="(00) 00000-0000"
+                  defaultValue={formatPhoneForDisplay(formData.phone)}
+                  onChange={handlePhoneChange}
+                  onBlur={handlePhoneBlur}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
+                  placeholder="(67) 00000-0000"
                   disabled={isSubmitting}
                 />
               </div>
@@ -308,17 +349,28 @@ export function RequestModal({ isOpen, onClose, onSuccess }: RequestModalProps) 
 
             {/* Observações */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Observações
               </label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-none"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors resize-none"
                 rows={3}
                 placeholder="Informações adicionais sobre a reunião"
                 disabled={isSubmitting}
               />
+            </div>
+
+            {/* Informação */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
+              <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-900 mb-1">Informação</p>
+                <p className="text-sm text-amber-800 leading-relaxed">
+                  A solicitação será analisada e, em breve, você receberá um email com a confirmação ou rejeição do agendamento.
+                </p>
+              </div>
             </div>
 
             {/* Botões */}

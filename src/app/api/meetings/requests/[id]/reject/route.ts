@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
-import { sendRejectionEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/email';
+import { getRejectionEmailTemplate } from '@/app/(routes)/calendario/templates';
 
 const prisma = new PrismaClient();
 
@@ -59,7 +60,7 @@ export async function PUT(
       const meetingDate = new Date(meeting.date);
       const dateString = `${meetingDate.getFullYear()}-${String(meetingDate.getMonth() + 1).padStart(2, '0')}-${String(meetingDate.getDate()).padStart(2, '0')}`;
 
-      const emailSent = await sendRejectionEmail(
+      const emailHtml = getRejectionEmailTemplate(
         {
           title: meeting.title,
           date: dateString,
@@ -72,8 +73,14 @@ export async function PUT(
         reason
       );
 
-      if (!emailSent) {
-        console.warn('Reunião rejeitada, mas email não foi enviado');
+      const result = await sendEmail({
+        to: meeting.email,
+        subject: 'Solicitação Recusada - JURFIS/SEFAZ',
+        html: emailHtml
+      });
+
+      if (!result.success) {
+        console.warn('Reunião rejeitada, mas email não foi enviado:', result.error);
       }
     }
 

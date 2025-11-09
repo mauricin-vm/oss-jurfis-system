@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { useToast } from './toast-context';
+import { toast } from 'sonner';
 
 interface DeleteModalProps {
   isOpen: boolean;
@@ -11,7 +11,6 @@ interface DeleteModalProps {
 }
 
 export function DeleteModal({ isOpen, meetingTitle, onClose, onConfirm }: DeleteModalProps) {
-  const { addToast } = useToast();
   const [isClosing, setIsClosing] = useState(false);
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,7 +43,7 @@ export function DeleteModal({ isOpen, meetingTitle, onClose, onConfirm }: Delete
 
   const handleConfirm = () => {
     if (!reason.trim()) {
-      addToast('É necessário informar a justificativa do cancelamento', 'warning');
+      toast.warning('É necessário informar a justificativa do cancelamento');
       return;
     }
 
@@ -56,7 +55,7 @@ export function DeleteModal({ isOpen, meetingTitle, onClose, onConfirm }: Delete
 
   return (
     <div
-      className={`fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 transition-opacity duration-200 ${isClosing ? 'opacity-0' : shouldAnimate ? 'opacity-100' : 'opacity-0'}`}
+      className={`fixed inset-0 bg-black/60 flex items-start justify-center z-[60] p-4 pt-16 transition-opacity duration-200 ${isClosing ? 'opacity-0' : shouldAnimate ? 'opacity-100' : 'opacity-0'}`}
       onClick={handleClose}
     >
       <div
@@ -64,8 +63,11 @@ export function DeleteModal({ isOpen, meetingTitle, onClose, onConfirm }: Delete
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Confirmar Exclusão</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Confirmar Exclusão</h2>
+              <p className="text-sm text-gray-600 mt-1">Esta ação não poderá ser desfeita</p>
+            </div>
             <button
               type="button"
               onClick={handleClose}
@@ -79,32 +81,32 @@ export function DeleteModal({ isOpen, meetingTitle, onClose, onConfirm }: Delete
           </div>
 
           <div className="mb-4">
-            <p className="text-sm text-gray-600 mb-2">
-              Você está prestes a excluir a seguinte reunião:
-            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Agendamento a ser excluído
+            </label>
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-sm font-semibold text-gray-900">{meetingTitle}</p>
             </div>
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Justificativa do Cancelamento <span className="text-red-600">*</span>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Justificativa do Cancelamento <span className="text-red-500">*</span>
             </label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-none"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors resize-none"
               rows={4}
               placeholder="Explique o motivo do cancelamento para o solicitante..."
               disabled={isSubmitting}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 mt-1.5">
               Esta justificativa será enviada por email ao solicitante
             </p>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 pt-4 border-t">
             <button
               onClick={handleClose}
               disabled={isSubmitting}

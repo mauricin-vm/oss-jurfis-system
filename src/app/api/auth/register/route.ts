@@ -26,6 +26,29 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({ data: { email, password: hashedPassword, name: name || null } });
 
+    //buscar organização padrão (JURFIS)
+    const defaultOrgSlug = process.env.DEFAULT_ORGANIZATION_SLUG || 'jurfis';
+    let organization = await prisma.organization.findUnique({ where: { slug: defaultOrgSlug } });
+
+    //se não existir, criar organização JURFIS
+    if (!organization) {
+      organization = await prisma.organization.create({
+        data: {
+          name: 'Junta de Recursos Fiscais',
+          slug: 'jurfis'
+        }
+      });
+    }
+
+    //criar membership na organização padrão com role EMPLOYEE
+    await prisma.organizationMember.create({
+      data: {
+        userId: user.id,
+        organizationId: organization.id,
+        role: 'EMPLOYEE'
+      }
+    });
+
     //retornar resposta
     return NextResponse.json({ message: `Usuário criado com sucesso!`, user: { id: user.id, email: user.email, name: user.name } }, { status: 201 });
 

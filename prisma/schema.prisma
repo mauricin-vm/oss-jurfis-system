@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,86 +8,88 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["jurfis"]
+  schemas  = ["public", "jurfis"]
 }
 
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@map("Chat_Account")
-  @@schema("jurfis")
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("Chat_Session")
-  @@schema("jurfis")
-}
+// ============================================================================
+// SCHEMA: public
+// Authentication and User Management
+// ============================================================================
 
 model User {
-  id              String            @id @default(cuid())
-  name            String?
-  email           String            @unique
-  password        String
-  emailVerified   DateTime?
-  image           String?
-  role            UserRole          @default(SERVIDOR)
-  accounts        Account[]
-  sessions        Session[]
+  id                  String               @id @default(cuid())
+  name                String?
+  email               String               @unique
+  password            String
+  emailVerified       DateTime?
+  image               String?
+  organizationMembers OrganizationMember[]
+  overtimeRecords     OvertimeRecord[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@map("User")
+  @@schema("public")
+}
+
+model Organization {
+  id              String               @id @default(cuid())
+  name            String
+  slug            String               @unique
+  members         OrganizationMember[]
   overtimeRecords OvertimeRecord[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
 
-  @@map("Chat_User")
-  @@schema("jurfis")
+  @@map("Organization")
+  @@schema("public")
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+model OrganizationMember {
+  id             String           @id @default(cuid())
+  userId         String
+  organizationId String
+  role           OrganizationRole
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
-  @@unique([identifier, token])
-  @@map("Chat_VerificationToken")
-  @@schema("jurfis")
+  @@unique([userId, organizationId])
+  @@map("OrganizationMember")
+  @@schema("public")
 }
+
+enum OrganizationRole {
+  ADMIN
+  EMPLOYEE
+  EXTERNAL
+
+  @@schema("public")
+}
+
+// ============================================================================
+// SCHEMA: jurfis
+// Scheduling System (Meeting Management)
+// ============================================================================
 
 model Meeting {
-  id               String        @id @default(cuid())
-  title            String
-  date             DateTime
-  startTime        String
-  endTime          String
-  requestedBy      String
-  email            String?
-  phone            String?
-  contacts         String?
-  notes            String?       @db.Text
-  status           MeetingStatus @default(APPROVED)
-  rejectionReason  String?       @db.Text
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  title           String
+  date            DateTime
+  startTime       String
+  endTime         String
+  requestedBy     String?
+  email           String?
+  phone           String?
+  contacts        String?
+  notes           String?       @db.Text
+  status          MeetingStatus @default(APPROVED)
+  rejectionReason String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
-  @@map("Meeting")
+  @@map("Scheduling_Meeting")
   @@schema("jurfis")
 }
 
@@ -102,29 +101,29 @@ enum MeetingStatus {
   @@schema("jurfis")
 }
 
-enum UserRole {
-  ADMIN
-  SERVIDOR
-
-  @@schema("jurfis")
-}
+// ============================================================================
+// SCHEMA: jurfis
+// Overtime System (Employee Overtime Tracking)
+// ============================================================================
 
 model OvertimeRecord {
-  id                 String   @id @default(cuid())
+  id                 String       @id @default(cuid())
   userId             String
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  month              Int      // 1-12
-  year               Int      // 2024, 2025...
-  extraHours         Float    // Horas extras do mês
-  lateHours          Float    // Horas de atraso
-  balance            Float    // extraHours - lateHours
-  accumulatedBalance Float    // Saldo acumulado até este mês
-  documentPath       String?  // Caminho do arquivo no servidor de rede
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  organizationId     String
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  month              Int // 1-12
+  year               Int // 2024, 2025...
+  extraHours         Float // Horas extras do mês
+  lateHours          Float // Horas de atraso
+  balance            Float // extraHours - lateHours
+  accumulatedBalance Float // Saldo acumulado até este mês
+  documentPath       String? // Caminho do arquivo no servidor de rede
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
-  @@unique([userId, month, year]) // Um registro por mês/ano por usuário
-  @@index([userId, year, month])
-  @@map("OvertimeRecord")
+  @@index([userId, organizationId, year, month])
+  @@index([organizationId])
+  @@map("Overtime_Record")
   @@schema("jurfis")
 }

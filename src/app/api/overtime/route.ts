@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
       where,
       orderBy: [
         { year: 'desc' },
-        { month: 'desc' }
+        { month: 'desc' },
+        { createdAt: 'desc' }
       ]
     });
 
@@ -90,24 +91,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Usuário não encontrado' }, { status: 404 });
     }
 
-    // Verificar duplicação
-    const existing = await prisma.overtimeRecord.findUnique({
-      where: {
-        userId_month_year: {
-          userId: user.id,
-          month,
-          year
-        }
-      }
-    });
-
-    if (existing) {
-      return NextResponse.json({
-        success: false,
-        error: 'Já existe um registro para este mês/ano'
-      }, { status: 400 });
-    }
-
     // Calcular saldo mensal
     const balance = extraHours - lateHours;
 
@@ -122,7 +105,8 @@ export async function POST(req: NextRequest) {
       },
       orderBy: [
         { year: 'desc' },
-        { month: 'desc' }
+        { month: 'desc' },
+        { createdAt: 'desc' }
       ],
       take: 1
     });
@@ -162,6 +146,7 @@ export async function POST(req: NextRequest) {
     const record = await prisma.overtimeRecord.create({
       data: {
         userId: user.id,
+        organizationId: session.user.organizationId,
         month,
         year,
         extraHours,
@@ -173,7 +158,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Recalcular saldos acumulados de todos os registros posteriores
-    await recalculateSubsequentBalances(user.id, year, month);
+    await recalculateSubsequentBalances(user.id, year, month, session.user.organizationId);
 
     return NextResponse.json({ success: true, record });
   } catch (error) {
@@ -184,13 +169,17 @@ export async function POST(req: NextRequest) {
 
 // Função auxiliar para recalcular saldos acumulados
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function recalculateSubsequentBalances(userId: string, _fromYear: number, _fromMonth: number) {
+async function recalculateSubsequentBalances(userId: string, _fromYear: number, _fromMonth: number, organizationId?: string) {
   // Buscar todos os registros do usuário ordenados por data
   const allRecords = await prisma.overtimeRecord.findMany({
-    where: { userId },
+    where: {
+      userId,
+      ...(organizationId && { organizationId })
+    },
     orderBy: [
       { year: 'asc' },
-      { month: 'asc' }
+      { month: 'asc' },
+      { createdAt: 'asc' }
     ]
   });
 

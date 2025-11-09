@@ -1,2 +1,15 @@
-- na página de horas extras, arrumar modais para manter o padrão (editar e deletar); 
-- ver tabela de usuários para permitir que tenha contas da jurfis e de outros setores; além disso tenha níveis de acesso (admin, funcionário e visualizador)
+- fazer página de controle de contas de usuários
+
+
+- na página de calendário:
+1) testar novo agendamento quando deslogado (funcionalidade e layout do email);
+2) testar novo agendamento quando logado como admin da JURFIS (funcionalidade, layout do email, testar facultatividade dos campos nome, telefone e email);
+3) testar layout, toast, funcionalidade e email dos modais de editar e excluir agendamento;
+4) testar cards no calendário quando logado ou deslogado (ver se está aparecendo corretamente)
+5) testar no mini calendário as datas com agendamentos, se está diferenciando
+
+- na página de horas extras:
+1) testar registrar nova hora extra (com documento);
+3) testar visualizar documento
+4) testar editar e excluir hora extra
+
