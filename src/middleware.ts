@@ -12,6 +12,7 @@ const protectedApiRoutes = [
 const protectedPageRoutes = [
   '/horas-extras',
   '/chat',
+  '/ccr',
 ];
 
 export async function middleware(request: NextRequest) {
@@ -59,5 +60,6 @@ export const config = {
     '/api/meetings/requests/:path*',
     '/horas-extras/:path*',
     '/chat/:path*',
+    '/ccr/:path*',
   ],
 };

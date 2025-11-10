@@ -9,15 +9,27 @@ export interface SidebarAction {
   variant?: 'default' | 'outline' | 'ghost';
 }
 
+export interface SidebarMenuItem {
+  label?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  href?: string;
+  onClick?: () => void;
+  active?: boolean;
+  // Para submenus colapsáveis no item
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  subItems?: SidebarMenuItem[];
+}
+
 export interface SidebarSection {
   title?: string;
-  items: {
-    label: string;
-    icon?: React.ComponentType<{ className?: string }>;
-    href?: string;
-    onClick?: () => void;
-    active?: boolean;
-  }[];
+  items?: SidebarMenuItem[];
+  // Para nova estrutura com menuItems
+  menuItems?: SidebarMenuItem[];
+  // Para submenus colapsáveis (manter compatibilidade)
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  subItems?: SidebarMenuItem[];
 }
 
 export interface SidebarConfig {

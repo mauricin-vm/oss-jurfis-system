@@ -66,7 +66,7 @@ export async function PUT(
           date: dateString,
           startTime: meeting.startTime,
           endTime: meeting.endTime,
-          requestedBy: meeting.requestedBy,
+          requestedBy: meeting.requestedBy || '',
           email: meeting.email,
           phone: meeting.phone || ''
         },

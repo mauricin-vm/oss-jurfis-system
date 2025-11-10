@@ -47,10 +47,9 @@ export function AppSwitcher() {
     },
     {
       name: "Controle de Recursos",
-      description: "Gestão de processos",
+      description: "Sistema operacional",
       icon: Scale,
-      href: "#",
-      disabled: true,
+      href: "/ccr",
     },
     {
       name: "Horas Extras",

@@ -102,10 +102,10 @@ export function AdminModal({ isOpen, meeting, onClose, onSave }: AdminModalProps
 
     if (result.formated) {
       // Exibir formatado
-      const formatted = formatPhoneForDisplay(result.phone);
+      const formatted = formatPhoneForDisplay(result.phone || '');
       e.target.value = formatted;
       // Salvar apenas números no estado
-      setFormData({ ...formData, phone: result.phone });
+      setFormData({ ...formData, phone: result.phone || '' });
     } else {
       // Se falhou a validação, manter o valor digitado
       const formatted = formatPhoneForDisplay(onlyNumbers);

@@ -7,6 +7,7 @@
 3) testar layout, toast, funcionalidade e email dos modais de editar e excluir agendamento;
 4) testar cards no calendário quando logado ou deslogado (ver se está aparecendo corretamente)
 5) testar no mini calendário as datas com agendamentos, se está diferenciando
+6) ver o formato do telefone que está sendo salvo
 
 - na página de horas extras:
 1) testar registrar nova hora extra (com documento);

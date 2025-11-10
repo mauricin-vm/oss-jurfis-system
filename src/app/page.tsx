@@ -12,7 +12,7 @@ import { HiScale } from 'react-icons/hi2';
 //função principal
 export default function Home() {
   return (
-    <>
+    <div className="flex flex-col h-full">
       {/* Header */}
       <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
         <div className="flex items-center gap-2 px-4">
@@ -23,7 +23,8 @@ export default function Home() {
       </header>
 
       {/* Conteúdo */}
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      <div className="flex-1 overflow-auto">
+        <div className="flex flex-col gap-4 p-4 pt-0">
         <div className="mx-auto max-w-7xl w-full">
 
           {/* Header */}
@@ -115,30 +116,29 @@ export default function Home() {
             </Card>
 
             {/* Card Controle de Recursos */}
-            <Card className="h-full relative opacity-60 p-6 gap-3">
-              <div className="absolute top-3 right-3 bg-muted text-muted-foreground text-xs font-medium px-2 py-1 rounded-md">
-                Em breve
-              </div>
-              <CardHeader className="p-0">
-                <div className="flex items-center gap-4 mb-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-                    <HiScale className="h-6 w-6 text-foreground" />
+            <Link href="/ccr" className="group">
+              <Card className="h-full transition-all hover:shadow-md p-6 gap-3">
+                <CardHeader className="p-0">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted transition-transform group-hover:scale-110">
+                      <HiScale className="h-6 w-6 text-foreground" />
+                    </div>
+                    <CardTitle className="text-xl">Controle de Recursos</CardTitle>
                   </div>
-                  <CardTitle className="text-xl">Controle de Recursos</CardTitle>
-                </div>
-                <CardDescription>
-                  Sistema operacional de recursos administrativos
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Controle de protocolos e prazos</li>
-                  <li>• Planejamento de pautas de julgamento</li>
-                  <li>• Notificações automáticas</li>
-                  <li>• Gerenciamento de julgamentos e decisões</li>
-                </ul>
-              </CardContent>
-            </Card>
+                  <CardDescription>
+                    Sistema operacional de recursos administrativos
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li>• Controle de protocolos e prazos</li>
+                    <li>• Planejamento de pautas de julgamento</li>
+                    <li>• Notificações automáticas</li>
+                    <li>• Gerenciamento de julgamentos e decisões</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
 
             {/* Card Gestão de Horas Extras */}
             <Link href="/horas-extras" className="group">
@@ -192,7 +192,8 @@ export default function Home() {
 
           </div>
         </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 };

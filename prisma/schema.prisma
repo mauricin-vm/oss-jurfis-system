@@ -25,6 +25,19 @@ model User {
   image               String?
   organizationMembers OrganizationMember[]
   overtimeRecords     OvertimeRecord[]
+
+  // CCR Module Relations
+  partsCreated        Part[]               @relation("PartCreatedBy")
+  contactsCreated     Contact[]            @relation("ContactCreatedBy")
+  protocolsCreated    Protocol[]           @relation("ProtocolEmployee")
+  tramitationsCreated Tramitation[]        @relation("TramitationCreatedBy")
+  sessionsCreated     Session[]            @relation("SessionCreatedBy")
+  minutesCreated      SessionMinutes[]     @relation("MinutesCreatedBy")
+  notificationsCreated Notification[]      @relation("NotificationCreatedBy")
+  documentsUploaded   Document[]           @relation("DocumentUploadedBy")
+  publicationsCreated Publication[]        @relation("PublicationCreatedBy")
+  historyCreated      ResourceHistory[]    @relation("HistoryCreatedBy")
+
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
@@ -125,5 +138,1103 @@ model OvertimeRecord {
   @@index([userId, organizationId, year, month])
   @@index([organizationId])
   @@map("Overtime_Record")
+  @@schema("jurfis")
+}
+
+// ============================================================================
+// SCHEMA: jurfis
+// CCR System (Conselho de Contribuintes do Recife)
+// ============================================================================
+
+// ============================================
+// TABELA DE PARTES (PARTES DO PROCESSO)
+// ============================================
+// Representa as partes envolvidas (requerente, patrono, representante, etc)
+model Part {
+  id          String   @id @default(uuid())
+
+  // Informações da parte
+  name        String   // Nome completo da parte
+  role        PartRole // Papel no processo (REQUERENTE, PATRONO, etc)
+  document    String?  // CPF/CNPJ (opcional)
+  notes       String?  @db.Text
+
+  // Vinculações opcionais (FK nullable)
+  protocolId  String?
+  protocol    Protocol? @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+
+  resourceId  String?
+  resource    Resource? @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  // Relacionamentos
+  contacts    Contact[] // Contatos da parte (telefones/emails)
+
+  // Auditoria
+  createdBy   String
+  createdByUser User @relation("PartCreatedBy", fields: [createdBy], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([protocolId])
+  @@index([resourceId])
+  @@index([role])
+  @@map("CCR_Part")
+  @@schema("jurfis")
+}
+
+// ============================================
+// TABELA DE CONTATOS
+// ============================================
+// Contatos (telefones/emails) vinculados a uma parte
+model Contact {
+  id            String   @id @default(uuid())
+
+  // Vinculação obrigatória à parte
+  partId String
+  part          Part @relation(fields: [partId], references: [id], onDelete: Cascade)
+
+  // Informações do contato
+  type        ContactType // TELEFONE ou EMAIL
+  value       String   // Número do telefone ou endereço de email
+
+  // Marcadores
+  isPrimary   Boolean  @default(false) // Contato principal da parte
+  isVerified  Boolean  @default(false) // Contato verificado
+
+  // Observações
+  notes       String?  @db.Text
+
+  // Auditoria
+  createdBy   String?
+  createdByUser User? @relation("ContactCreatedBy", fields: [createdBy], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([partId])
+  @@index([type])
+  @@index([value]) // Para busca rápida por email/telefone
+  @@map("CCR_Contact")
+  @@schema("jurfis")
+}
+
+// ============================================
+// 1. MÓDULO DE PROTOCOLOS
+// ============================================
+model Protocol {
+  id            String   @id @default(uuid())
+  number        String   @unique // "XXX/MM-YYYY"
+  sequenceNumber Int     // XXX
+  month         Int      // MM (1-12)
+  year          Int      // YYYY
+  processNumber String   // Número do processo
+  presenter     String   // Apresentante
+  employeeId    String   // Quem fez o protocolo
+  employee      User     @relation("ProtocolEmployee", fields: [employeeId], references: [id])
+  status        ProtocolStatus @default(PENDENTE) // PENDENTE, CONCLUIDO, ARQUIVADO
+
+  // Análise de Admissibilidade (feita no protocolo)
+  analysisDate         DateTime? // Data da análise de admissibilidade
+  isAdmittedAsResource Boolean?  // true = admitido como recurso, false = não admitido, null = não analisado ainda
+  rejectionReason      String?   @db.Text // Motivo se não for admitido como recurso
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relacionamentos
+  parts         Part[] // Partes envolvidas no protocolo
+  resource      Resource? // Só existe se isAdmittedAsResource = true
+  tramitations  Tramitation[]
+
+  @@index([year, month, sequenceNumber])
+  @@map("CCR_Protocol")
+  @@schema("jurfis")
+}
+
+// ============================================
+// TABELA DE SETORES
+// ============================================
+model Sector {
+  id            String   @id @default(uuid())
+  name          String   @unique // Nome completo do setor (ex: "Fiscalização", "Contencioso")
+  abbreviation  String?  @unique // Abreviação do setor (ex: "FISC", "CONT")
+  dispatchCode  String?  // Código identificador para despacho
+  description   String?  @db.Text
+
+  // Informações de contato
+  phone         String?
+  email         String?
+  address       String?  @db.Text
+
+  isActive      Boolean  @default(true)
+
+  // Relacionamentos
+  tramitations  Tramitation[]
+  notifications Notification[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("CCR_Sector")
+  @@schema("jurfis")
+}
+
+// ============================================
+// TABELA DE MEMBROS (CONSELHEIROS)
+// ============================================
+model Member {
+  id            String   @id @default(uuid())
+  name          String   // Nome completo do membro
+  role          String?  // Cargo (ex: "Presidente", "Conselheiro Titular", etc)
+  cpf           String?  // CPF
+  registration  String?  // Matrícula
+  agency        String?  // Órgão
+  phone         String?
+  email         String?
+  gender        Gender?  // MASCULINO ou FEMININO
+  isActive      Boolean  @default(true)
+
+  // Relacionamentos
+  tramitations                  Tramitation[]
+  sessionsAsPresident           Session[] @relation("SessionPresident")
+  sessionsPresent               SessionMember[] @relation("SessionMembersPresent")
+  sessionResourcesAsPresident   SessionResource[] @relation("SessionResourcePresident")
+  distributions                 SessionDistribution[] @relation("SessionDistributions")
+  votes                         SessionMemberVote[] @relation("MemberVotes")
+  votesFollowed                 SessionMemberVote[] @relation("FollowedMembers")
+  sessionVotingResultsWon       SessionVotingResult[] @relation("VotingResultWinners")
+  minutesAsPresident            SessionMinutes[] @relation("MinutesPresident")
+  minutesPresent                SessionMinutesMember[] @relation("MinutesMembersPresent")
+  minutesAbsences               SessionMinutesAbsence[] @relation("MinutesAbsences")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("CCR_Member")
+  @@schema("jurfis")
+}
+
+// ============================================
+// 2. MÓDULO DE TRAMITAÇÕES
+// ============================================
+model Tramitation {
+  id            String   @id @default(uuid())
+  protocolId    String?
+  protocol      Protocol? @relation(fields: [protocolId], references: [id])
+  resourceId    String?
+  resource      Resource? @relation(fields: [resourceId], references: [id])
+
+  purpose       TramitationPurpose // SOLICITAR_PROCESSO, CONTRARRAZAO, JULGAMENTO, etc
+
+  // Destino da tramitação (3 opções, pelo menos uma obrigatória):
+
+  // Opção 1: Setor (FK para tabela Sector)
+  sectorId      String?
+  sector        Sector? @relation(fields: [sectorId], references: [id])
+
+  // Opção 2: Membro/Conselheiro (FK para tabela Member)
+  memberId      String?
+  member        Member? @relation(fields: [memberId], references: [id])
+
+  // Opção 3: Destino (texto livre)
+  destination   String? // Para quando não é setor nem membro específico
+
+  requestDate   DateTime @default(now())
+  deadline      DateTime? // Prazo limite
+  returnDate    DateTime? // Data de retorno (quando voltar)
+  status        TramitationStatus @default(PENDENTE)
+  observations  String?  @db.Text
+
+  createdBy     String
+  createdByUser User @relation("TramitationCreatedBy", fields: [createdBy], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([deadline])
+  @@index([status])
+  @@index([sectorId])
+  @@index([memberId])
+  @@map("CCR_Tramitation")
+  @@schema("jurfis")
+}
+
+// ============================================
+// TABELA DE ASSUNTOS (PADRÕES COM HIERARQUIA)
+// ============================================
+model Subject {
+  id            String   @id @default(uuid())
+  name          String   // Nome do assunto (ex: "Isenção de IPTU", "Possui renda superior a 2 salários mínimos")
+  description   String?  @db.Text
+  isActive      Boolean  @default(true)
+
+  // Hierarquia: Assunto principal → Subitens (motivos)
+  parentId      String?  // Null = assunto principal, preenchido = subitem
+  parent        Subject?  @relation("SubjectHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children      Subject[] @relation("SubjectHierarchy")
+
+  // Relacionamentos com recursos
+  resourceLinks SubjectChildren[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([parentId])
+  @@map("CCR_Subject")
+  @@schema("jurfis")
+}
+
+// ============================================
+// 3. MÓDULO DE RECURSOS
+// ============================================
+// Recurso só é criado quando o protocolo é admitido como recurso
+model Resource {
+  id                String   @id @default(uuid())
+  resourceNumber    String   @unique // "XXXX/YYYY"
+  sequenceNumber    Int      // XXXX
+  year              Int      // YYYY
+
+  protocolId        String   @unique
+  protocol          Protocol @relation(fields: [protocolId], references: [id])
+
+  status            ResourceStatus @default(EM_ANALISE)
+  type              ResourceType // VOLUNTARIO ou OFICIO
+
+  // Informações do processo
+  processNumber     String
+
+  // Informações do acórdão (gerado após julgamento)
+  decisionNumber         String?  @unique // "XXXX/YYYY"
+  decisionSequenceNumber Int?     // XXXX
+  decisionYear           Int?     // YYYY
+
+  // Relacionamentos
+  parts             Part[] // Partes envolvidas no recurso (incluindo contribuinte)
+  subjects          SubjectChildren[] // Assuntos do recurso (many-to-many com hierarquia)
+  registrations     Registration[] // Inscrições e valores do recurso
+  authorities       Authority[] // Autoridades vinculadas ao recurso
+  tramitations      Tramitation[]
+  sessions          SessionResource[]
+  distributions     SessionDistribution[]
+  documents         Document[]
+  publications      Publication[]
+  history           ResourceHistory[]
+  notifications     Notification[]
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([year, sequenceNumber])
+  @@index([decisionYear, decisionSequenceNumber])
+  @@index([status])
+  @@index([type])
+  @@map("CCR_Resource")
+  @@schema("jurfis")
+}
+
+// ============================================
+// TABELA DE RELACIONAMENTO: RECURSO <-> ASSUNTO (Many-to-Many com Hierarquia)
+// ============================================
+model SubjectChildren {
+  id                String   @id @default(uuid())
+  resourceId        String
+  resource          Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  subjectId         String
+  subject           Subject @relation(fields: [subjectId], references: [id])
+
+  // Marcador de assunto principal
+  isPrimary         Boolean  @default(false) // True = assunto principal do recurso, False = subitem/motivo
+
+  createdAt         DateTime @default(now())
+
+  @@unique([resourceId, subjectId])
+  @@index([resourceId])
+  @@index([subjectId])
+  @@index([isPrimary])
+  @@map("CCR_SubjectChildren")
+  @@schema("jurfis")
+}
+
+// ============================================
+// TABELA DE INSCRIÇÕES
+// ============================================
+model Registration {
+  id                String   @id @default(uuid())
+  resourceId        String
+  resource          Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  type              RegistrationType // IMOBILIARIA, ECONOMICA, CPF, CNPJ
+  registrationNumber String   // Número da inscrição
+
+  // Endereço da inscrição
+  cep               String?
+  street            String?  // Rua
+  number            String?  // Número
+  complement        String?  // Complemento
+  neighborhood      String?  // Bairro
+  city              String?  // Cidade
+  state             String?  // Estado (UF)
+
+  // Relacionamentos
+  values            RegistrationValue[]
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([resourceId])
+  @@map("CCR_Registration")
+  @@schema("jurfis")
+}
+
+// ============================================
+// TABELA DE VALORES DAS INSCRIÇÕES
+// ============================================
+model RegistrationValue {
+  id             String   @id @default(uuid())
+  registrationId String
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  description    String?  // Descrição do valor (ex: "Principal", "Multa", "Juros")
+  amount         Decimal  @db.Decimal(15, 2)
+  dueDate        DateTime? // Data de vencimento
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([registrationId])
+  @@map("CCR_RegistrationValue")
+  @@schema("jurfis")
+}
+
+// ============================================
+// AUTORIDADES VINCULADAS AO RECURSO
+// ============================================
+model Authority {
+  id             String   @id @default(uuid())
+  resourceId     String
+  resource       Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  type           AuthorityType // Tipo de autoridade
+  name           String   // Nome da autoridade
+  phone          String?  // Telefone (opcional)
+  email          String?  // Email (opcional)
+  observations   String?  @db.Text
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([resourceId])
+  @@index([type])
+  @@map("CCR_Authority")
+  @@schema("jurfis")
+}
+
+// ============================================
+// 4. MÓDULO DE SESSÕES
+// ============================================
+model Session {
+  id            String   @id @default(uuid())
+  sessionNumber String   @unique // Número da sessão
+  date          DateTime
+  startTime     String   // Formato: "14:00"
+  endTime       String?  // Formato: "17:00"
+  type          SessionType // ORDINARIA, EXTRAORDINARIA
+  status        SessionStatus @default(PENDENTE)
+
+  // Presidente da sessão (membro conselheiro)
+  presidentId   String
+  president     Member @relation("SessionPresident", fields: [presidentId], references: [id])
+
+  observations  String?  @db.Text
+
+  resources     SessionResource[]
+  members       SessionMember[] // Membros presentes na sessão
+  distributions SessionDistribution[] @relation("DistributionsSessions")
+  minutes       SessionMinutes? // Ata da sessão (gerada após a sessão)
+
+  createdBy     String
+  createdByUser User @relation("SessionCreatedBy", fields: [createdBy], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([date])
+  @@index([status])
+  @@index([presidentId])
+  @@map("CCR_Session")
+  @@schema("jurfis")
+}
+
+// ============================================
+// RECURSO EM PAUTA DA SESSÃO
+// ============================================
+model SessionResource {
+  id            String   @id @default(uuid())
+  resourceId    String
+  resource      Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  sessionId     String
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  order         Int      // Ordem na pauta
+  status        SessionResourceStatus // EM_PAUTA, SUSPENSO, DILIGENCIA, PEDIDO_VISTA, JULGADO
+
+  // Presidente específico para este julgamento (opcional)
+  specificPresidentId String?
+  specificPresident   Member? @relation("SessionResourcePresident", fields: [specificPresidentId], references: [id])
+
+  observations  String?  @db.Text
+
+  // Relacionamentos
+  judgment             SessionJudgment?
+  sessionVotingResults SessionVotingResult[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([resourceId, sessionId])
+  @@index([sessionId])
+  @@index([status])
+  @@index([specificPresidentId])
+  @@map("CCR_SessionResource")
+  @@schema("jurfis")
+}
+
+// ============================================
+// RESULTADO DE CADA VOTAÇÃO (PRELIMINAR OU MÉRITO)
+// ============================================
+model SessionVotingResult {
+  id                    String   @id @default(uuid())
+  sessionResourceId     String
+  sessionResource       SessionResource @relation(fields: [sessionResourceId], references: [id], onDelete: Cascade)
+
+  type                  VotingType // PRELIMINAR ou MERITO
+
+  // Decisão desta votação
+  decisionId            String
+  decision              SessionVoteDecision @relation("VotingResultDecisions", fields: [decisionId], references: [id])
+
+  // Membro cujo voto venceu NESTA votação
+  winningMemberId       String
+  winningMember         Member @relation("VotingResultWinners", fields: [winningMemberId], references: [id])
+
+  // Resumo dos votos (calculado)
+  totalVotes            Int
+  votesInFavor          Int
+  votesAgainst          Int
+  abstentions           Int
+  qualityVoteUsed       Boolean  @default(false)
+
+  justification         String?  @db.Text
+  officeComplement      String?  @db.Text
+
+  // Relacionamentos inversos
+  judgmentAsWinner SessionJudgment[] @relation("WinningVotingResult")
+  memberVotes      SessionMemberVote[]
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([sessionResourceId])
+  @@index([type])
+  @@index([decisionId])
+  @@index([winningMemberId])
+  @@map("CCR_SessionVotingResult")
+  @@schema("jurfis")
+}
+
+// ============================================
+// DISTRIBUIÇÃO DO RECURSO (RELATOR/REVISORES)
+// ============================================
+model SessionDistribution {
+  id                String   @id @default(uuid())
+  resourceId        String
+  resource          Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  type              DistributionType // RELATOR, REVISOR
+  memberId          String
+  member            Member @relation("SessionDistributions", fields: [memberId], references: [id])
+
+  // Informações da distribuição
+  sessionId         String
+  session           Session  @relation("DistributionsSessions", fields: [sessionId], references: [id])
+  distributionOrder Int
+  reason            String?  @db.Text
+
+  isActive          Boolean  @default(true)
+
+  // Relacionamento com atas
+  minutesDistributions SessionMinutesDistribution[] @relation("MinutesDistributions")
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([resourceId])
+  @@index([memberId])
+  @@index([sessionId])
+  @@index([isActive])
+  @@map("CCR_SessionDistribution")
+  @@schema("jurfis")
+}
+
+// ============================================
+// JULGAMENTO FINAL CONSOLIDADO
+// ============================================
+model SessionJudgment {
+  id                        String   @id @default(uuid())
+  sessionResourceId         String   @unique
+  sessionResource           SessionResource @relation(fields: [sessionResourceId], references: [id], onDelete: Cascade)
+
+  winningVotingResultId     String
+  winningVotingResult       SessionVotingResult @relation("WinningVotingResult", fields: [winningVotingResultId], references: [id])
+
+  observations              String?  @db.Text
+
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@index([sessionResourceId])
+  @@index([winningVotingResultId])
+  @@map("CCR_SessionJudgment")
+  @@schema("jurfis")
+}
+
+// ============================================
+// VOTOS DOS MEMBROS NA SESSÃO
+// ============================================
+model SessionMemberVote {
+  id                    String   @id @default(uuid())
+
+  sessionVotingResultId String
+  sessionVotingResult   SessionVotingResult @relation(fields: [sessionVotingResultId], references: [id], onDelete: Cascade)
+
+  memberId              String
+  member                Member @relation("MemberVotes", fields: [memberId], references: [id])
+
+  voteType              VoteType
+  participationStatus   ParticipationStatus
+
+  votePosition          VotePosition?
+  followsMemberId       String?
+  followsMember         Member? @relation("FollowedMembers", fields: [followsMemberId], references: [id])
+
+  isQualityVote         Boolean  @default(false)
+
+  voteDecisionId        String?
+  voteDecision          SessionVoteDecision? @relation("MemberVoteDecisions", fields: [voteDecisionId], references: [id])
+
+  justification         String?  @db.Text
+  observations          String?  @db.Text
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([sessionVotingResultId, memberId])
+  @@index([sessionVotingResultId])
+  @@index([memberId])
+  @@index([followsMemberId])
+  @@index([voteDecisionId])
+  @@map("CCR_SessionMemberVote")
+  @@schema("jurfis")
+}
+
+// ============================================
+// MEMBROS PRESENTES NA SESSÃO
+// ============================================
+model SessionMember {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member   @relation("SessionMembersPresent", fields: [memberId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, memberId])
+  @@index([sessionId])
+  @@index([memberId])
+  @@map("CCR_SessionMember")
+  @@schema("jurfis")
+}
+
+// ============================================
+// ATAS (MINUTES)
+// ============================================
+model SessionMinutes {
+  id                    String   @id @default(uuid())
+
+  sessionId             String?  @unique
+  session               Session? @relation(fields: [sessionId], references: [id])
+
+  minutesNumber         String   @unique
+  sequenceNumber        Int
+  year                  Int
+
+  ordinalNumber         Int
+  ordinalType           SessionType
+
+  presidentId           String?
+  president             Member? @relation("MinutesPresident", fields: [presidentId], references: [id])
+
+  endTime               String
+
+  administrativeMatters String?  @db.Text
+
+  distributions         SessionMinutesDistribution[]
+  presentMembers        SessionMinutesMember[]
+  absentMembers         SessionMinutesAbsence[]
+
+  createdBy             String
+  createdByUser         User @relation("MinutesCreatedBy", fields: [createdBy], references: [id])
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([year, sequenceNumber])
+  @@index([ordinalType, ordinalNumber])
+  @@index([sessionId])
+  @@index([presidentId])
+  @@map("CCR_SessionMinutes")
+  @@schema("jurfis")
+}
+
+// ============================================
+// DECISÕES PADRONIZADAS (VOTOS)
+// ============================================
+model SessionVoteDecision {
+  id          String   @id @default(uuid())
+  type        DecisionType
+  code        String
+  name        String
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+
+  sessionVotingResults SessionVotingResult[] @relation("VotingResultDecisions")
+  memberVoteDecisions  SessionMemberVote[] @relation("MemberVoteDecisions")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([type, code])
+  @@index([type])
+  @@index([isActive])
+  @@map("CCR_SessionVoteDecision")
+  @@schema("jurfis")
+}
+
+// ============================================
+// RECURSOS DISTRIBUÍDOS NA ATA
+// ============================================
+model SessionMinutesDistribution {
+  id              String   @id @default(uuid())
+  minutesId       String
+  minutes         SessionMinutes @relation(fields: [minutesId], references: [id], onDelete: Cascade)
+  distributionId  String
+  distribution    SessionDistribution @relation("MinutesDistributions", fields: [distributionId], references: [id])
+
+  createdAt       DateTime @default(now())
+
+  @@unique([minutesId, distributionId])
+  @@index([minutesId])
+  @@index([distributionId])
+  @@map("CCR_SessionMinutesDistribution")
+  @@schema("jurfis")
+}
+
+// ============================================
+// MEMBROS PRESENTES NA ATA
+// ============================================
+model SessionMinutesMember {
+  id        String   @id @default(uuid())
+  minutesId String
+  minutes   SessionMinutes @relation(fields: [minutesId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member @relation("MinutesMembersPresent", fields: [memberId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([minutesId, memberId])
+  @@index([minutesId])
+  @@index([memberId])
+  @@map("CCR_SessionMinutesMember")
+  @@schema("jurfis")
+}
+
+// ============================================
+// MEMBROS AUSENTES NA ATA
+// ============================================
+model SessionMinutesAbsence {
+  id            String   @id @default(uuid())
+  minutesId     String
+  minutes       SessionMinutes @relation(fields: [minutesId], references: [id], onDelete: Cascade)
+  memberId      String
+  member        Member @relation("MinutesAbsences", fields: [memberId], references: [id])
+
+  isJustified   Boolean  @default(false)
+  justification String?  @db.Text
+
+  createdAt     DateTime @default(now())
+
+  @@unique([minutesId, memberId])
+  @@index([minutesId])
+  @@index([memberId])
+  @@index([isJustified])
+  @@map("CCR_SessionMinutesAbsence")
+  @@schema("jurfis")
+}
+
+// ============================================
+// 5. MÓDULO DE NOTIFICAÇÕES
+// ============================================
+model Notification {
+  id            String   @id @default(uuid())
+  resourceId    String?
+  resource      Resource? @relation(fields: [resourceId], references: [id])
+
+  type          NotificationType
+
+  sectorId      String?
+  sector        Sector? @relation(fields: [sectorId], references: [id])
+
+  destination   String?
+
+  subject       String
+  message       String   @db.Text
+
+  scheduledFor  DateTime?
+  status        NotificationStatus @default(PENDENTE)
+
+  contacts      NotificationContact[]
+
+  createdBy     String
+  createdByUser User @relation("NotificationCreatedBy", fields: [createdBy], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([resourceId])
+  @@index([sectorId])
+  @@map("CCR_Notification")
+  @@schema("jurfis")
+}
+
+// ============================================
+// CONTATOS/CANAIS DE NOTIFICAÇÃO
+// ============================================
+model NotificationContact {
+  id             String   @id @default(uuid())
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  channel        NotificationChannel
+  contact        String?
+
+  attemptCount   Int      @default(0)
+  lastAttemptAt  DateTime?
+
+  status         NotificationContactStatus @default(PENDENTE)
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  confirmedAt    DateTime?
+
+  error          String?  @db.Text
+  observations   String?  @db.Text
+
+  metadata       Json?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([notificationId])
+  @@index([channel])
+  @@index([status])
+  @@map("CCR_NotificationContact")
+  @@schema("jurfis")
+}
+
+// ============================================
+// DOCUMENTOS
+// ============================================
+model Document {
+  id            String   @id @default(uuid())
+  resourceId    String
+  resource      Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  type          DocumentType
+  title         String
+  description   String?  @db.Text
+  fileName      String
+  storedFileName String
+  filePath      String
+  fileSize      Int
+  mimeType      String
+
+  uploadedBy    String
+  uploadedByUser User @relation("DocumentUploadedBy", fields: [uploadedBy], references: [id])
+  uploadedAt    DateTime @default(now())
+
+  @@index([resourceId])
+  @@index([type])
+  @@map("CCR_Document")
+  @@schema("jurfis")
+}
+
+// ============================================
+// PUBLICAÇÕES
+// ============================================
+model Publication {
+  id                 String   @id @default(uuid())
+  resourceId         String
+  resource           Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  type               PublicationType
+  publicationNumber  String
+  publicationDate    DateTime
+
+  observations       String?  @db.Text
+
+  createdBy          String
+  createdByUser      User @relation("PublicationCreatedBy", fields: [createdBy], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([resourceId])
+  @@index([type])
+  @@index([publicationDate])
+  @@map("CCR_Publication")
+  @@schema("jurfis")
+}
+
+// ============================================
+// HISTÓRICO
+// ============================================
+model ResourceHistory {
+  id            String   @id @default(uuid())
+  resourceId    String
+  resource      Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  action        HistoryAction
+  description   String   @db.Text
+  metadata      Json?
+  isManual      Boolean  @default(false)
+
+  createdBy     String
+  createdByUser User @relation("HistoryCreatedBy", fields: [createdBy], references: [id])
+  createdAt     DateTime @default(now())
+
+  @@index([resourceId])
+  @@index([createdAt])
+  @@index([isManual])
+  @@map("CCR_ResourceHistory")
+  @@schema("jurfis")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+enum ProtocolStatus {
+  PENDENTE
+  CONCLUIDO
+  ARQUIVADO
+  @@schema("jurfis")
+}
+
+enum PartRole {
+  REQUERENTE
+  PATRONO
+  REPRESENTANTE
+  OUTRO
+  @@schema("jurfis")
+}
+
+enum ContactType {
+  TELEFONE
+  EMAIL
+  @@schema("jurfis")
+}
+
+enum TramitationPurpose {
+  SOLICITAR_PROCESSO
+  CONTRARRAZAO
+  JULGAMENTO
+  DILIGENCIA
+  OUTRO
+  @@schema("jurfis")
+}
+
+enum TramitationStatus {
+  PENDENTE
+  ENTREGUE
+  @@schema("jurfis")
+}
+
+enum ResourceStatus {
+  EM_ANALISE
+  TEMPESTIVIDADE
+  CONTRARRAZAO
+  PARECER_PGM
+  DISTRIBUICAO
+  NOTIFICACAO_JULGAMENTO
+  JULGAMENTO
+  DILIGENCIA
+  PEDIDO_VISTA
+  SUSPENSO
+  PUBLICACAO_ACORDAO
+  ASSINATURA_ACORDAO
+  NOTIFICACAO_DECISAO
+  CONCLUIDO
+  @@schema("jurfis")
+}
+
+enum ResourceType {
+  VOLUNTARIO
+  OFICIO
+  @@schema("jurfis")
+}
+
+enum RegistrationType {
+  IMOBILIARIA
+  ECONOMICA
+  CPF
+  CNPJ
+  @@schema("jurfis")
+}
+
+enum AuthorityType {
+  AUTOR_PROCEDIMENTO_FISCAL
+  JULGADOR_SINGULAR
+  COORDENADOR
+  OUTROS
+  @@schema("jurfis")
+}
+
+enum SessionType {
+  ORDINARIA
+  EXTRAORDINARIA
+  @@schema("jurfis")
+}
+
+enum SessionStatus {
+  PENDENTE
+  EM_PROGRESSO
+  CONCLUIDA
+  CANCELADA
+  @@schema("jurfis")
+}
+
+enum SessionResourceStatus {
+  EM_PAUTA
+  SUSPENSO
+  DILIGENCIA
+  PEDIDO_VISTA
+  JULGADO
+  @@schema("jurfis")
+}
+
+enum DistributionType {
+  RELATOR
+  REVISOR
+  @@schema("jurfis")
+}
+
+enum DecisionType {
+  PRELIMINAR
+  MERITO
+  @@schema("jurfis")
+}
+
+enum VotingType {
+  PRELIMINAR
+  MERITO
+  @@schema("jurfis")
+}
+
+enum VoteType {
+  RELATOR
+  REVISOR
+  PRESIDENTE
+  VOTANTE
+  @@schema("jurfis")
+}
+
+enum ParticipationStatus {
+  PRESENTE
+  AUSENTE
+  IMPEDIDO
+  SUSPEITO
+  @@schema("jurfis")
+}
+
+enum VotePosition {
+  ACOMPANHA_RELATOR
+  ACOMPANHA_REVISOR
+  VOTO_PROPRIO
+  ABSTENCAO
+  @@schema("jurfis")
+}
+
+enum Gender {
+  MASCULINO
+  FEMININO
+  @@schema("jurfis")
+}
+
+enum NotificationType {
+  ADMISSIBILIDADE
+  SESSAO
+  DILIGENCIA
+  DECISAO
+  OUTRO
+  @@schema("jurfis")
+}
+
+enum NotificationStatus {
+  PENDENTE
+  ENVIADO
+  ERRO
+  AGENDADO
+  @@schema("jurfis")
+}
+
+enum NotificationContactStatus {
+  PENDENTE
+  ENVIADO
+  ENTREGUE
+  CONFIRMADO
+  ERRO
+  @@schema("jurfis")
+}
+
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+  CORREIOS
+  EDITAL
+  @@schema("jurfis")
+}
+
+enum DocumentType {
+  RECURSO
+  CONTRARRAZAO
+  PARECER
+  VOTO
+  OUTROS
+  @@schema("jurfis")
+}
+
+enum PublicationType {
+  SESSAO
+  CIENCIA
+  OUTRO
+  @@schema("jurfis")
+}
+
+enum HistoryAction {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  DOCUMENT_ADDED
+  SESSION_ADDED
+  NOTIFICATION_SENT
+  TRAMITATION_ADDED
   @@schema("jurfis")
 }
