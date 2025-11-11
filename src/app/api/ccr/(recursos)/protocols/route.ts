@@ -70,7 +70,19 @@ export async function GET(req: Request) {
         ...(status && { status: status as any }),
         ...(year && { year: parseInt(year) }),
       },
-      include: {
+      select: {
+        id: true,
+        number: true,
+        sequenceNumber: true,
+        month: true,
+        year: true,
+        processNumber: true,
+        presenter: true,
+        status: true,
+        archiveReason: true,
+        createdAt: true,
+        updatedAt: true,
+        employeeId: true,
         employee: {
           select: {
             id: true,

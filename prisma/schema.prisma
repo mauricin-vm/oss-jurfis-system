@@ -156,8 +156,11 @@ model Part {
   // Informações da parte (pessoa única dentro de um processo)
   name          String   // Nome completo da parte
   role          PartRole // Papel no processo (REQUERENTE, PATRONO, etc)
-  document      String?  // CPF/CNPJ (opcional)
   processNumber String   // Número do processo ao qual esta parte pertence
+
+  // Campos específicos para PATRONO
+  registrationType String? // Tipo de registro (ex: OAB, CRC)
+  registrationNumber String? // Número do registro
 
   // Relacionamentos
   protocols   ProtocolPart[] // Protocolos que usam esta parte
@@ -336,6 +339,28 @@ model Member {
 }
 
 // ============================================
+// TABELA DE AUTORIDADES CADASTRADAS
+// ============================================
+model AuthorityRegistered {
+  id            String   @id @default(uuid())
+  name          String   // Nome completo da autoridade
+  phone         String?  // Telefone
+  email         String?  // Email
+  isActive      Boolean  @default(true)
+
+  // Relacionamentos
+  authorities   Authority[] // Autoridades vinculadas aos recursos
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([name])
+  @@map("CCR_AuthorityRegistered")
+  @@schema("jurfis")
+}
+
+// ============================================
 // 2. MÓDULO DE TRAMITAÇÕES
 // ============================================
 model Tramitation {
@@ -423,6 +448,8 @@ model Resource {
 
   // Informações do processo
   processNumber     String
+  processName       String? // Nome/Descrição do processo
+  attachedProcesses String[] @default([]) // Processos apensos
 
   // Informações do acórdão (gerado após julgamento)
   decisionNumber         String?  @unique // "XXXX/YYYY"
@@ -531,21 +558,21 @@ model RegistrationValue {
 // AUTORIDADES VINCULADAS AO RECURSO
 // ============================================
 model Authority {
-  id             String   @id @default(uuid())
-  resourceId     String
-  resource       Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  id                     String   @id @default(uuid())
+  resourceId             String
+  resource               Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
-  type           AuthorityType // Tipo de autoridade
-  name           String   // Nome da autoridade
-  phone          String?  // Telefone (opcional)
-  email          String?  // Email (opcional)
-  observations   String?  @db.Text
+  type                   AuthorityType // Tipo de autoridade
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  authorityRegisteredId  String
+  authorityRegistered    AuthorityRegistered @relation(fields: [authorityRegisteredId], references: [id], onDelete: Restrict)
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   @@index([resourceId])
   @@index([type])
+  @@index([authorityRegisteredId])
   @@map("CCR_Authority")
   @@schema("jurfis")
 }

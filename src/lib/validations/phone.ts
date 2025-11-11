@@ -158,3 +158,27 @@ export const phoneOptionalSchema = z.string()
   }, {
     message: 'Telefone inválido. Use o formato (DD) XXXXX-XXXX'
   });
+
+// ============================================
+// Função de Máscara para Input
+// ============================================
+
+// Aplica máscara de telefone conforme o usuário digita
+// (DD) XXXXX-XXXX para celular ou (DD) XXXX-XXXX para fixo
+export const applyPhoneMask = (value: string): string => {
+  const onlyNumbers = value.replace(/\D/g, '');
+
+  if (!onlyNumbers) return '';
+
+  // Aplicar máscara baseado no comprimento
+  if (onlyNumbers.length <= 2) {
+    return `(${onlyNumbers}`;
+  } else if (onlyNumbers.length <= 6) {
+    return `(${onlyNumbers.slice(0, 2)}) ${onlyNumbers.slice(2)}`;
+  } else if (onlyNumbers.length <= 10) {
+    return `(${onlyNumbers.slice(0, 2)}) ${onlyNumbers.slice(2, 6)}-${onlyNumbers.slice(6, 10)}`;
+  } else {
+    // Celular com 9 dígitos
+    return `(${onlyNumbers.slice(0, 2)}) ${onlyNumbers.slice(2, 7)}-${onlyNumbers.slice(7, 11)}`;
+  }
+};

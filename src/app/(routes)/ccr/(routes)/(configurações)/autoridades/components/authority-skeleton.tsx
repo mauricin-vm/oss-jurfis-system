@@ -1,13 +1,13 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function ProtocolTableSkeleton() {
+export function AuthorityTableSkeleton() {
   return (
     <div className="space-y-4">
-      {/* Botões de busca, filtros e novo protocolo skeleton */}
+      {/* Botões de busca, filtros e nova autoridade skeleton */}
       <div className="flex justify-end gap-2">
         <Skeleton className="h-8 w-8" />
         <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-8 w-36" />
+        <Skeleton className="h-8 w-40" />
       </div>
 
       {/* Tabela skeleton */}
@@ -16,12 +16,10 @@ export function ProtocolTableSkeleton() {
           {/* Header */}
           <div className="bg-muted p-4 border-b">
             <div className="flex gap-4">
-              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-48" />
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-4 w-32" />
               <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-20" />
               <Skeleton className="h-4 w-16" />
             </div>
           </div>
@@ -30,12 +28,10 @@ export function ProtocolTableSkeleton() {
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
             <div key={i} className="p-4 border-b min-h-[49px] flex items-center">
               <div className="flex gap-4 items-center w-full">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-48" />
                 <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-5 w-20 rounded-full" />
-                <Skeleton className="h-5 w-24 rounded-full" />
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-5 w-14 rounded-full" />
                 <Skeleton className="h-8 w-8 rounded ml-auto" />
               </div>
             </div>

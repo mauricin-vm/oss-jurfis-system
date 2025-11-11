@@ -250,7 +250,7 @@ export default function VisualizarSessaoPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1">
-                              <span className="font-mono text-sm">
+                              <span className="text-sm">
                                 {sr.resource.resourceNumber.toString().padStart(4, '0')}/
                                 {sr.resource.fiscalYear}
                               </span>
@@ -331,7 +331,7 @@ export default function VisualizarSessaoPage() {
                           <TableCell>
                             {format(new Date(vote.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                           </TableCell>
-                          <TableCell className="font-mono text-sm">
+                          <TableCell className="text-sm">
                             {vote.sessionResource.resource.resourceNumber.toString().padStart(4, '0')}/
                             {vote.sessionResource.resource.fiscalYear}
                           </TableCell>

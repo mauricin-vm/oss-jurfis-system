@@ -13,7 +13,7 @@ import {
   FileStack,
   Gavel,
   Bell,
-  BookOpen,
+  Settings,
   Users,
   Building2,
   UserCircle,
@@ -45,10 +45,11 @@ export default function CCRLayout({ children }: { children: React.ReactNode }) {
       // Construir subitens de Configurações baseado na role
       const configSubItems = [];
 
-      // Assuntos, Membros e Setores - apenas para ADMIN e EMPLOYEE
+      // Assuntos, Autoridades, Membros e Setores - apenas para ADMIN e EMPLOYEE
       if (!isExternal) {
         configSubItems.push(
           { label: 'Assuntos', href: '/ccr/assuntos' },
+          { label: 'Autoridades', href: '/ccr/autoridades' },
           { label: 'Membros', href: '/ccr/membros' },
           { label: 'Setores', href: '/ccr/setores' }
         );
@@ -90,7 +91,7 @@ export default function CCRLayout({ children }: { children: React.ReactNode }) {
       if (configSubItems.length > 0) {
         menuItems.push({
           label: 'Configurações',
-          icon: BookOpen,
+          icon: Settings,
           collapsible: true,
           defaultOpen: false,
           subItems: configSubItems,

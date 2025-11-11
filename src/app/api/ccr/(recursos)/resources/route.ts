@@ -38,14 +38,6 @@ export async function GET(req: Request) {
             },
           },
         },
-        parts: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
-            document: true,
-          },
-        },
         subjects: {
           include: {
             subject: {
@@ -72,7 +64,30 @@ export async function GET(req: Request) {
       ],
     });
 
-    return NextResponse.json(resources);
+    // Buscar as partes de cada recurso via processNumber
+    const resourcesWithParts = await Promise.all(
+      resources.map(async (resource) => {
+        const parts = await prismadb.part.findMany({
+          where: {
+            processNumber: resource.processNumber,
+          },
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            registrationType: true,
+            registrationNumber: true,
+          },
+        });
+
+        return {
+          ...resource,
+          parts,
+        };
+      })
+    );
+
+    return NextResponse.json(resourcesWithParts);
   } catch (error) {
     console.log('[RESOURCES_GET]', error);
     return new NextResponse('Internal error', { status: 500 });

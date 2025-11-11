@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
 
 interface ConcludeModalProps {
   isOpen: boolean;
   protocolNumber: string;
   protocolId: string;
   onClose: () => void;
-  onConfirm: (type: 'CONCLUIDO' | 'ARQUIVADO', justification?: string) => Promise<void>;
+  onConfirm: (type: 'CONCLUIDO' | 'ARQUIVADO', justification?: string, resourceType?: 'VOLUNTARIO' | 'OFICIO') => Promise<void>;
 }
 
 export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onConfirm }: ConcludeModalProps) {
@@ -18,6 +19,7 @@ export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onC
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedType, setSelectedType] = useState<'CONCLUIDO' | 'ARQUIVADO' | null>(null);
   const [justification, setJustification] = useState('');
+  const [resourceType, setResourceType] = useState<'VOLUNTARIO' | 'OFICIO'>('VOLUNTARIO');
 
   useEffect(() => {
     if (isOpen) {
@@ -26,6 +28,7 @@ export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onC
       setIsSubmitting(false);
       setSelectedType(null);
       setJustification('');
+      setResourceType('VOLUNTARIO');
 
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -34,6 +37,13 @@ export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onC
       });
     }
   }, [isOpen]);
+
+  // Reset para VOLUNTARIO quando selecionar CONCLUIDO
+  useEffect(() => {
+    if (selectedType === 'CONCLUIDO') {
+      setResourceType('VOLUNTARIO');
+    }
+  }, [selectedType]);
 
   const handleClose = () => {
     if (isSubmitting) return;
@@ -59,7 +69,11 @@ export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onC
     setIsSubmitting(true);
 
     try {
-      await onConfirm(selectedType, justification.trim() || undefined);
+      await onConfirm(
+        selectedType,
+        justification.trim() || undefined,
+        selectedType === 'CONCLUIDO' ? resourceType : undefined
+      );
       handleClose();
     } catch (error) {
       setIsSubmitting(false);
@@ -71,12 +85,10 @@ export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onC
 
   return (
     <div
-      className={`fixed inset-0 bg-black/40 flex items-start justify-center z-[60] p-4 pt-16 transition-opacity duration-200 ${isClosing ? 'opacity-0' : shouldAnimate ? 'opacity-100' : 'opacity-0'}`}
-      onClick={handleClose}
+      className={`fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 pt-16 transition-opacity duration-200 ${isClosing ? 'opacity-0' : shouldAnimate ? 'opacity-100' : 'opacity-0'}`}
     >
       <div
         className={`bg-white rounded-lg shadow-xl max-w-md w-full transition-all duration-200 ${isClosing ? 'scale-95 opacity-0' : shouldAnimate ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
           {/* Header */}
@@ -97,18 +109,18 @@ export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onC
             </button>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-4">
             {/* Opções */}
             <div className="space-y-3">
-              <p className="text-sm font-medium text-gray-700">
-                Selecione o destino do protocolo:
-              </p>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Selecione o destino do protocolo <span className="text-red-500">*</span>
+              </label>
 
               {/* Opção 1: Concluído (vira Recurso) */}
               <div
                 onClick={() => !isSubmitting && setSelectedType('CONCLUIDO')}
-                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedType === 'CONCLUIDO'
-                    ? 'border-blue-500 bg-blue-50'
+                className={`border-2 rounded-lg p-3.5 cursor-pointer transition-all ${selectedType === 'CONCLUIDO'
+                    ? 'border-gray-900 bg-gray-50'
                     : 'border-gray-200 hover:border-gray-300'
                   } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -116,7 +128,7 @@ export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onC
                   <div className="flex items-center h-5">
                     <div
                       className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedType === 'CONCLUIDO'
-                          ? 'border-blue-500 bg-blue-500'
+                          ? 'border-gray-900 bg-gray-900'
                           : 'border-gray-300'
                         }`}
                     >
@@ -137,8 +149,8 @@ export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onC
               {/* Opção 2: Arquivado (não vira Recurso) */}
               <div
                 onClick={() => !isSubmitting && setSelectedType('ARQUIVADO')}
-                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedType === 'ARQUIVADO'
-                    ? 'border-orange-500 bg-orange-50'
+                className={`border-2 rounded-lg p-3.5 cursor-pointer transition-all ${selectedType === 'ARQUIVADO'
+                    ? 'border-gray-900 bg-gray-50'
                     : 'border-gray-200 hover:border-gray-300'
                   } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -146,7 +158,7 @@ export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onC
                   <div className="flex items-center h-5">
                     <div
                       className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedType === 'ARQUIVADO'
-                          ? 'border-orange-500 bg-orange-500'
+                          ? 'border-gray-900 bg-gray-900'
                           : 'border-gray-300'
                         }`}
                     >
@@ -165,10 +177,66 @@ export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onC
               </div>
             </div>
 
+            {/* Tipo de Recurso (aparece se CONCLUIDO) */}
+            {selectedType === 'CONCLUIDO' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Tipo de Recurso <span className="text-red-500">*</span>
+                </label>
+                <div className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50">
+                  <div className="flex items-center justify-between gap-6">
+                    {/* Voluntário */}
+                    <div
+                      className="flex-1 text-center cursor-pointer"
+                      onClick={() => !isSubmitting && setResourceType('VOLUNTARIO')}
+                    >
+                      <div className={`transition-all duration-200 ${resourceType === 'VOLUNTARIO' ? 'scale-105' : 'scale-100 opacity-60'}`}>
+                        <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full mb-2 transition-colors ${resourceType === 'VOLUNTARIO' ? 'bg-gray-900 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                        <p className={`text-sm font-semibold transition-colors ${resourceType === 'VOLUNTARIO' ? 'text-gray-900' : 'text-gray-500'}`}>
+                          Voluntário
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Switch Central */}
+                    <div className="flex flex-col items-center">
+                      <Switch
+                        checked={resourceType === 'OFICIO'}
+                        onCheckedChange={(checked) => setResourceType(checked ? 'OFICIO' : 'VOLUNTARIO')}
+                        disabled={isSubmitting}
+                        className="data-[state=checked]:bg-gray-900 data-[state=unchecked]:bg-gray-900"
+                      />
+                    </div>
+
+                    {/* Ofício */}
+                    <div
+                      className="flex-1 text-center cursor-pointer"
+                      onClick={() => !isSubmitting && setResourceType('OFICIO')}
+                    >
+                      <div className={`transition-all duration-200 ${resourceType === 'OFICIO' ? 'scale-105' : 'scale-100 opacity-60'}`}>
+                        <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full mb-2 transition-colors ${resourceType === 'OFICIO' ? 'bg-gray-900 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <p className={`text-sm font-semibold transition-colors ${resourceType === 'OFICIO' ? 'text-gray-900' : 'text-gray-500'}`}>
+                          Ofício
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Campo de Justificativa (aparece se ARQUIVADO) */}
             {selectedType === 'ARQUIVADO' && (
-              <div className="space-y-2">
-                <label htmlFor="justification" className="block text-sm font-medium text-gray-700">
+              <div>
+                <label htmlFor="justification" className="block text-sm font-medium text-gray-700 mb-1.5">
                   Justificativa <span className="text-red-500">*</span>
                 </label>
                 <textarea
@@ -178,13 +246,13 @@ export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onC
                   disabled={isSubmitting}
                   placeholder="Informe o motivo do arquivamento..."
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition-colors resize-none disabled:opacity-50 disabled:bg-gray-50"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors resize-none disabled:opacity-50 disabled:bg-gray-50"
                 />
               </div>
             )}
 
             {/* Botões */}
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-3 pt-4">
               <button
                 type="button"
                 onClick={handleClose}
@@ -197,7 +265,7 @@ export function ConcludeModal({ isOpen, protocolNumber, protocolId, onClose, onC
                 type="button"
                 onClick={handleConfirm}
                 disabled={isSubmitting || !selectedType}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 {isSubmitting ? 'Processando...' : 'Confirmar'}

@@ -2,46 +2,47 @@
 
 import { useEffect, useState } from 'react';
 import { ResourceTable } from './components/resource-table';
-import { CCRPageWrapper } from '../components/ccr-page-wrapper';
+import { CCRPageWrapper } from '../../../components/ccr-page-wrapper';
 
 interface Resource {
   id: string;
-  resourceNumber: number;
-  fiscalYear: number;
+  resourceNumber: string;
+  sequenceNumber: number;
+  year: number;
+  processNumber: string;
   status: string;
-  totalValue: number | null;
-  isActive: boolean;
+  type: string;
+  createdAt: Date;
   protocol: {
     id: string;
     number: string;
-    subject: string;
-    protocolParts: Array<{
-      part: {
-        id: string;
-        name: string;
-      };
-    }>;
+    processNumber: string;
+    presenter: string;
+    employee: {
+      id: string;
+      name: string;
+      email: string;
+    };
   };
+  parts: Array<{
+    id: string;
+    name: string;
+    role: string;
+    document: string | null;
+  }>;
   subjects: Array<{
     subject: {
       id: string;
       name: string;
+      parentId: string | null;
     };
   }>;
-  currentTramitation?: {
-    toSector: {
-      id: string;
-      name: string;
-      abbreviation: string | null;
-    };
-  } | null;
   _count?: {
     tramitations: number;
     documents: number;
-    sessionResources: number;
+    sessions: number;
+    registrations: number;
   };
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export default function RecursosPage() {
@@ -69,13 +70,11 @@ export default function RecursosPage() {
 
   return (
     <CCRPageWrapper title="Recursos">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold tracking-tight">Recursos</h2>
-        </div>
-
-        <ResourceTable data={resources} loading={loading} onRefresh={fetchResources} />
-      </div>
+      <ResourceTable
+        data={resources}
+        loading={loading}
+        onRefresh={fetchResources}
+      />
     </CCRPageWrapper>
   );
 }

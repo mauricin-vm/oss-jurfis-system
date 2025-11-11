@@ -48,11 +48,16 @@ export async function PUT(
 
     const { id } = await params;
     const body = await req.json();
-    const { type, justification } = body;
+    const { type, justification, resourceType } = body;
 
     // Validar tipo
     if (!type || (type !== 'CONCLUIDO' && type !== 'ARQUIVADO')) {
       return new NextResponse('Tipo inválido', { status: 400 });
+    }
+
+    // Validar tipo de recurso para CONCLUIDO
+    if (type === 'CONCLUIDO' && (!resourceType || (resourceType !== 'VOLUNTARIO' && resourceType !== 'OFICIO'))) {
+      return new NextResponse('Tipo de recurso inválido', { status: 400 });
     }
 
     // Validar justificativa para ARQUIVADO
@@ -93,7 +98,7 @@ export async function PUT(
           protocolId: protocol.id,
           processNumber: protocol.processNumber,
           status: 'EM_ANALISE',
-          type: 'VOLUNTARIO', // Assumir VOLUNTARIO por padrão (pode ser alterado depois)
+          type: resourceType,
         },
       });
 

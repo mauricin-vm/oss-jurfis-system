@@ -14,3 +14,13 @@
 3) testar visualizar documento
 4) testar editar e excluir hora extra
 
+
+
+- após fazer página de detalhes do recurso, corrigir o botão de ver recurso na página de listar os protocolos
+- permitir ou não alterar número do processo (admin; ver tabelas afetadas)
+
+- ver caso de excluir registro das configurações e dar BO no sistema. Não deve permitir, apenas desativar
+- ver sobre autocomplete nos inputs
+- ver sobre select pesquisável
+- testar partes do processo
+- testar autoridades no configurações

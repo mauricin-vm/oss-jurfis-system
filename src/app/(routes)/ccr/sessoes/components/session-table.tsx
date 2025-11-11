@@ -157,7 +157,7 @@ export function SessionTable({ data, loading, onRefresh }: SessionTableProps) {
             <TableBody>
               {data.map((session) => (
                 <TableRow key={session.id}>
-                  <TableCell className="font-medium font-mono">
+                  <TableCell className="font-medium">
                     {session.sessionNumber.toString().padStart(3, '0')}/{new Date(session.sessionDate).getFullYear()}
                   </TableCell>
                   <TableCell>

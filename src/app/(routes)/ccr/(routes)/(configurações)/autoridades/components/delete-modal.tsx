@@ -4,21 +4,20 @@ import { useState, useEffect } from 'react';
 
 interface DeleteModalProps {
   isOpen: boolean;
-  protocolNumber: string;
+  authorityName: string;
   onClose: () => void;
   onConfirm: () => void;
+  isDeleting?: boolean;
 }
 
-export function DeleteModal({ isOpen, protocolNumber, onClose, onConfirm }: DeleteModalProps) {
+export function DeleteModal({ isOpen, authorityName, onClose, onConfirm, isDeleting }: DeleteModalProps) {
   const [isClosing, setIsClosing] = useState(false);
   const [shouldAnimate, setShouldAnimate] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setIsClosing(false);
       setShouldAnimate(false);
-      setIsSubmitting(false);
 
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -29,7 +28,7 @@ export function DeleteModal({ isOpen, protocolNumber, onClose, onConfirm }: Dele
   }, [isOpen]);
 
   const handleClose = () => {
-    if (isSubmitting) return;
+    if (isDeleting) return;
     setIsClosing(true);
     setShouldAnimate(false);
     setTimeout(() => {
@@ -39,7 +38,6 @@ export function DeleteModal({ isOpen, protocolNumber, onClose, onConfirm }: Dele
   };
 
   const handleConfirm = () => {
-    setIsSubmitting(true);
     onConfirm();
   };
 
@@ -64,7 +62,7 @@ export function DeleteModal({ isOpen, protocolNumber, onClose, onConfirm }: Dele
             <button
               type="button"
               onClick={handleClose}
-              disabled={isSubmitting}
+              disabled={isDeleting}
               className="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
             >
               <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,13 +72,13 @@ export function DeleteModal({ isOpen, protocolNumber, onClose, onConfirm }: Dele
           </div>
 
           <div className="space-y-4">
-            {/* Protocolo a ser excluído */}
+            {/* Autoridade a ser excluída */}
             <div>
               <p className="text-sm text-gray-700 mb-2">
-                Você está prestes a excluir o seguinte protocolo:
+                Você está prestes a excluir a seguinte autoridade:
               </p>
               <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm font-semibold text-gray-900">{protocolNumber}</p>
+                <p className="text-sm font-semibold text-gray-900">{authorityName}</p>
               </div>
             </div>
 
@@ -93,7 +91,7 @@ export function DeleteModal({ isOpen, protocolNumber, onClose, onConfirm }: Dele
                 <div>
                   <p className="text-sm font-medium text-yellow-900">Atenção!</p>
                   <p className="text-xs text-yellow-800 mt-1">
-                    Esta ação não poderá ser desfeita e o protocolo será removido permanentemente.
+                    Esta ação não poderá ser desfeita e a autoridade será removida permanentemente.
                   </p>
                 </div>
               </div>
@@ -104,7 +102,7 @@ export function DeleteModal({ isOpen, protocolNumber, onClose, onConfirm }: Dele
               <button
                 type="button"
                 onClick={handleClose}
-                disabled={isSubmitting}
+                disabled={isDeleting}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancelar
@@ -112,10 +110,10 @@ export function DeleteModal({ isOpen, protocolNumber, onClose, onConfirm }: Dele
               <button
                 type="button"
                 onClick={handleConfirm}
-                disabled={isSubmitting}
+                disabled={isDeleting}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Excluindo...' : 'Confirmar Exclusão'}
+                {isDeleting ? 'Excluindo...' : 'Confirmar Exclusão'}
               </button>
             </div>
           </div>

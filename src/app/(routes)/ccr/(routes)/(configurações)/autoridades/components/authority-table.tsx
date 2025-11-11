@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
@@ -27,55 +28,28 @@ import {
 } from "@/components/ui/select";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { cn } from "@/lib/utils";
-import { MoreHorizontal, Pencil, Trash2, ChevronLeft, ChevronsLeft, ChevronRight, ChevronsRight, Plus, Filter, Search, CheckCircle, FileText, ExternalLink } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Filter, ChevronLeft, ChevronsLeft, ChevronsRight, ChevronRight, Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { DeleteModal } from './delete-modal';
-import { ConcludeModal } from './conclude-modal';
-import { ArchiveReasonModal } from './archive-reason-modal';
-import { ProtocolTableSkeleton } from './protocol-skeleton';
+import { AuthorityTableSkeleton } from './authority-skeleton';
 
-interface Protocol {
+interface Authority {
   id: string;
-  number: string;
-  processNumber: string;
-  presenter: string;
-  status: string;
-  createdAt: Date;
-  isLatest: boolean; // Flag que indica se é o último protocolo criado
-  archiveReason?: string | null;
-  employee: {
-    id: string;
-    name: string;
-  };
-  _count?: {
-    tramitations: number;
-  };
-  resource?: any;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  isActive: boolean;
 }
 
-interface ProtocolTableProps {
-  data: Protocol[];
+interface AuthorityTableProps {
+  data: Authority[];
   loading: boolean;
   onRefresh: () => void;
-  onNewProtocol: () => void;
+  onNewAuthority: () => void;
   userRole?: string;
 }
 
-const statusLabels: Record<string, string> = {
-  PENDENTE: 'Pendente',
-  CONCLUIDO: 'Concluído',
-  ARQUIVADO: 'Arquivado',
-};
-
-const statusStyles: Record<string, string> = {
-  PENDENTE: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  CONCLUIDO: 'bg-green-100 text-green-800 border-green-300',
-  ARQUIVADO: 'bg-gray-100 text-gray-800 border-gray-300',
-};
-
-export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRole }: ProtocolTableProps) {
+export function AuthorityTable({ data, loading, onRefresh, onNewAuthority, userRole }: AuthorityTableProps) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const canDelete = userRole === 'ADMIN';
@@ -83,11 +57,7 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [protocolToDelete, setProtocolToDelete] = useState<{ id: string; number: string } | null>(null);
-  const [isConcludeModalOpen, setIsConcludeModalOpen] = useState(false);
-  const [protocolToConclude, setProtocolToConclude] = useState<{ id: string; number: string } | null>(null);
-  const [isArchiveReasonModalOpen, setIsArchiveReasonModalOpen] = useState(false);
-  const [protocolToViewReason, setProtocolToViewReason] = useState<{ number: string; archiveReason: string } | null>(null);
+  const [authorityToDelete, setAuthorityToDelete] = useState<{ id: string; name: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -110,98 +80,56 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1); // Reset para primeira página ao buscar
+    setCurrentPage(1);
   };
 
-  const handleDeleteClick = (id: string, number: string) => {
-    setProtocolToDelete({ id, number });
+  const handleDeleteClick = (id: string, name: string) => {
+    setAuthorityToDelete({ id, name });
     setIsDeleteModalOpen(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (!protocolToDelete) return;
+    if (!authorityToDelete) return;
 
     try {
-      setDeletingId(protocolToDelete.id);
-      const response = await fetch(`/api/ccr/protocols/${protocolToDelete.id}`, {
+      setDeletingId(authorityToDelete.id);
+      const response = await fetch(`/api/ccr/authorities-registered/${authorityToDelete.id}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
-        const data = await response.json();
-        toast.success(data.message || 'Protocolo removido com sucesso');
+        toast.success('Autoridade removida com sucesso');
         setIsDeleteModalOpen(false);
-        setProtocolToDelete(null);
+        setAuthorityToDelete(null);
         onRefresh();
       } else {
-        const error = await response.text();
-        toast.error(error || 'Erro ao remover protocolo');
+        const data = await response.json();
+        toast.error(data.message || 'Erro ao remover autoridade');
       }
     } catch (error) {
-      console.error('Error deleting protocol:', error);
-      toast.error('Erro ao remover protocolo');
+      console.error('Error deleting authority:', error);
+      toast.error('Erro ao remover autoridade');
     } finally {
       setDeletingId(null);
     }
   };
 
-  const handleConcludeClick = (id: string, number: string) => {
-    setProtocolToConclude({ id, number });
-    setIsConcludeModalOpen(true);
-  };
-
-  const handleViewArchiveReasonClick = (number: string, archiveReason: string) => {
-    setProtocolToViewReason({ number, archiveReason });
-    setIsArchiveReasonModalOpen(true);
-  };
-
-  const handleConfirmConclude = async (type: 'CONCLUIDO' | 'ARQUIVADO', justification?: string, resourceType?: 'VOLUNTARIO' | 'OFICIO') => {
-    if (!protocolToConclude) return;
-
-    try {
-      const response = await fetch(`/api/ccr/protocols/${protocolToConclude.id}/conclude`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, justification, resourceType }),
-      });
-
-      if (response.ok) {
-        const protocol = await response.json();
-
-        if (type === 'CONCLUIDO') {
-          toast.success(`Protocolo concluído e convertido em recurso ${protocol.resource?.resourceNumber || ''}`);
-        } else {
-          toast.success('Protocolo arquivado com sucesso');
-        }
-
-        setIsConcludeModalOpen(false);
-        setProtocolToConclude(null);
-        onRefresh();
-      } else {
-        const error = await response.text();
-        toast.error(error || 'Erro ao concluir protocolo');
-        throw new Error(error);
-      }
-    } catch (error) {
-      console.error('Error concluding protocol:', error);
-      throw error;
-    }
-  };
-
   // Filtrar dados
-  const filteredData = data.filter((protocol) => {
-    const statusMatch = statusFilter === 'all' || (protocol.status === statusFilter);
+  const filteredData = data.filter((authority) => {
+    const statusMatch = statusFilter === 'all' ||
+      (statusFilter === 'active' && authority.isActive) ||
+      (statusFilter === 'inactive' && !authority.isActive);
 
     const searchMatch = !searchQuery ||
-      protocol.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      protocol.processNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      protocol.presenter.toLowerCase().includes(searchQuery.toLowerCase());
+      authority.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      authority.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      authority.email?.toLowerCase().includes(searchQuery.toLowerCase());
 
     return statusMatch && searchMatch;
   });
 
-  // Dados já vêm ordenados pelo número do protocolo (decrescente) do backend
-  const sortedData = filteredData;
+  // Ordenar dados alfabeticamente
+  const sortedData = filteredData.sort((a, b) => a.name.localeCompare(b.name));
 
   // Paginação
   const totalPages = Math.ceil(sortedData.length / itemsPerPage);
@@ -214,21 +142,17 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
     setCurrentPage(1);
   }
 
-  // Contar por status
-  const statusCounts = {
-    all: data.length,
-    PENDENTE: data.filter(p => p.status === 'PENDENTE').length,
-    CONCLUIDO: data.filter(p => p.status === 'CONCLUIDO').length,
-    ARQUIVADO: data.filter(p => p.status === 'ARQUIVADO').length,
-  };
+  // Contadores
+  const activeAuthorities = data.filter((a) => a.isActive).length;
+  const inactiveAuthorities = data.filter((a) => !a.isActive).length;
 
   if (loading) {
-    return <ProtocolTableSkeleton />;
+    return <AuthorityTableSkeleton />;
   }
 
   return (
     <div className="space-y-4">
-      {/* Botões de Busca, Filtros e Novo Protocolo */}
+      {/* Botões de Busca, Filtros e Nova Autoridade */}
       <div className="flex justify-end gap-2">
         {/* Busca Animada */}
         <div className="relative flex items-center">
@@ -242,7 +166,7 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
               <Input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Buscar protocolos..."
+                placeholder="Buscar autoridades..."
                 value={searchQuery}
                 onChange={handleSearchChange}
                 onBlur={handleSearchBlur}
@@ -291,16 +215,13 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
                   </SelectTrigger>
                   <SelectContent className="rounded-md">
                     <SelectItem value="all" className="cursor-pointer h-9">
-                      Todos ({statusCounts.all})
+                      Todos
                     </SelectItem>
-                    <SelectItem value="PENDENTE" className="cursor-pointer h-9">
-                      Pendente ({statusCounts.PENDENTE})
+                    <SelectItem value="active" className="cursor-pointer h-9">
+                      Ativos ({activeAuthorities})
                     </SelectItem>
-                    <SelectItem value="CONCLUIDO" className="cursor-pointer h-9">
-                      Concluído ({statusCounts.CONCLUIDO})
-                    </SelectItem>
-                    <SelectItem value="ARQUIVADO" className="cursor-pointer h-9">
-                      Arquivado ({statusCounts.ARQUIVADO})
+                    <SelectItem value="inactive" className="cursor-pointer h-9">
+                      Inativos ({inactiveAuthorities})
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -309,15 +230,15 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
 
             <div className="border-t p-3">
               <div className="text-xs text-muted-foreground text-center">
-                {filteredData.length} {filteredData.length === 1 ? 'protocolo' : 'protocolos'} encontrado{filteredData.length !== 1 ? 's' : ''}
+                {filteredData.length} {filteredData.length === 1 ? 'autoridade' : 'autoridades'} encontrada{filteredData.length !== 1 ? 's' : ''}
               </div>
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button size="sm" onClick={onNewProtocol} className="h-8 gap-2 cursor-pointer">
+        <Button size="sm" onClick={onNewAuthority} className="h-8 gap-2 cursor-pointer">
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Novo Protocolo</span>
+          <span className="hidden sm:inline">Nova Autoridade</span>
         </Button>
       </div>
 
@@ -325,8 +246,8 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
       {filteredData.length === 0 ? (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
           <div className="p-8 text-center">
-            <p className="text-muted-foreground">Nenhum protocolo encontrado.</p>
-            <p className="text-sm text-muted-foreground mt-2">Clique em &quot;Novo Protocolo&quot; para adicionar.</p>
+            <p className="text-muted-foreground">Nenhuma autoridade encontrada.</p>
+            <p className="text-sm text-muted-foreground mt-2">Clique em "Nova Autoridade" para adicionar.</p>
           </div>
         </div>
       ) : (
@@ -336,42 +257,34 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
               <Table className="min-w-[700px]">
                 <TableHeader>
                   <TableRow className="bg-muted hover:bg-muted border-b">
-                    <TableHead className="font-semibold">Número</TableHead>
-                    <TableHead className="font-semibold">Data Criação</TableHead>
-                    <TableHead className="font-semibold">Nº Processo</TableHead>
-                    <TableHead className="font-semibold">Apresentante</TableHead>
+                    <TableHead className="font-semibold">Nome</TableHead>
+                    <TableHead className="font-semibold">Telefone</TableHead>
+                    <TableHead className="font-semibold">E-mail</TableHead>
                     <TableHead className="font-semibold">Status</TableHead>
                     <TableHead className="w-[70px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedData.map((protocol) => (
-                    <TableRow key={protocol.id} className="bg-white hover:bg-muted/40 min-h-[49px]">
-                      <TableCell className="font-medium text-sm">
-                        {protocol.number}
+                  {paginatedData.map((authority) => (
+                    <TableRow key={authority.id} className="bg-white hover:bg-muted/40 min-h-[49px]">
+                      <TableCell className="font-medium">{authority.name}</TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {authority.phone || '-'}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">
-                          {format(new Date(protocol.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
+                          {authority.email || '-'}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">
-                          {protocol.processNumber}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-[200px] truncate">
-                          {protocol.presenter}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className={cn(
-                          'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border',
-                          statusStyles[protocol.status] || 'bg-gray-100 text-gray-800 border-gray-300'
-                        )}>
-                          {statusLabels[protocol.status] || protocol.status}
-                        </span>
+                        <Badge
+                          variant={authority.isActive ? 'default' : 'secondary'}
+                          className="cursor-default"
+                        >
+                          {authority.isActive ? 'Ativo' : 'Inativo'}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -382,48 +295,18 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {protocol.status === 'PENDENTE' && (
-                              <>
-                                <DropdownMenuItem
-                                  onClick={() => router.push(`/ccr/protocolos/${protocol.id}`)}
-                                  className="cursor-pointer h-9"
-                                >
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleConcludeClick(protocol.id, protocol.number)}
-                                  className="cursor-pointer h-9"
-                                >
-                                  <CheckCircle className="mr-2 h-4 w-4" />
-                                  Concluir
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {/* TODO: Revisar página de detalhes do recurso */}
-                            {protocol.status === 'CONCLUIDO' && protocol.resource && (
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/ccr/autoridades/${authority.id}`)}
+                              className="cursor-pointer h-9"
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            {canDelete && (
                               <DropdownMenuItem
-                                onClick={() => router.push(`/ccr/recursos/${protocol.resource.id}`)}
-                                className="cursor-pointer h-9"
-                              >
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                Ver Recurso
-                              </DropdownMenuItem>
-                            )}
-                            {protocol.status === 'ARQUIVADO' && protocol.archiveReason && (
-                              <DropdownMenuItem
-                                onClick={() => handleViewArchiveReasonClick(protocol.number, protocol.archiveReason!)}
-                                className="cursor-pointer h-9"
-                              >
-                                <FileText className="mr-2 h-4 w-4" />
-                                Ver Justificativa
-                              </DropdownMenuItem>
-                            )}
-                            {canDelete && protocol.isLatest && protocol.status !== 'CONCLUIDO' && (
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteClick(protocol.id, protocol.number)}
-                                disabled={deletingId === protocol.id || !!protocol.resource}
-                                className="cursor-pointer h-9"
+                                onClick={() => handleDeleteClick(authority.id, authority.name)}
+                                className="cursor-pointer text-red-600 h-9"
+                                disabled={deletingId === authority.id}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Excluir
@@ -536,38 +419,15 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
         </>
       )}
 
-      {/* Modal de Confirmação de Exclusão */}
       <DeleteModal
         isOpen={isDeleteModalOpen}
-        protocolNumber={protocolToDelete?.number || ''}
         onClose={() => {
           setIsDeleteModalOpen(false);
-          setProtocolToDelete(null);
+          setAuthorityToDelete(null);
         }}
         onConfirm={handleConfirmDelete}
-      />
-
-      {/* Modal de Conclusão */}
-      <ConcludeModal
-        isOpen={isConcludeModalOpen}
-        protocolNumber={protocolToConclude?.number || ''}
-        protocolId={protocolToConclude?.id || ''}
-        onClose={() => {
-          setIsConcludeModalOpen(false);
-          setProtocolToConclude(null);
-        }}
-        onConfirm={handleConfirmConclude}
-      />
-
-      {/* Modal de Justificativa de Arquivamento */}
-      <ArchiveReasonModal
-        isOpen={isArchiveReasonModalOpen}
-        protocolNumber={protocolToViewReason?.number || ''}
-        archiveReason={protocolToViewReason?.archiveReason || ''}
-        onClose={() => {
-          setIsArchiveReasonModalOpen(false);
-          setProtocolToViewReason(null);
-        }}
+        authorityName={authorityToDelete?.name || ''}
+        isDeleting={deletingId === authorityToDelete?.id}
       />
     </div>
   );

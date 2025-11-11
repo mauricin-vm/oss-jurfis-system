@@ -27,67 +27,70 @@ import {
 } from "@/components/ui/select";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { cn } from "@/lib/utils";
-import { MoreHorizontal, Pencil, Trash2, ChevronLeft, ChevronsLeft, ChevronRight, ChevronsRight, Plus, Filter, Search, CheckCircle, FileText, ExternalLink } from 'lucide-react';
-import { toast } from 'sonner';
+import { MoreHorizontal, ChevronLeft, ChevronsLeft, ChevronRight, ChevronsRight, Filter, Search, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { DeleteModal } from './delete-modal';
-import { ConcludeModal } from './conclude-modal';
-import { ArchiveReasonModal } from './archive-reason-modal';
-import { ProtocolTableSkeleton } from './protocol-skeleton';
+import { ResourceTableSkeleton } from './resource-skeleton';
+import { getResourceStatusLabel, getResourceStatusColor } from '../../../../hooks/resource-status';
 
-interface Protocol {
+interface Resource {
   id: string;
-  number: string;
+  resourceNumber: string;
+  sequenceNumber: number;
+  year: number;
   processNumber: string;
-  presenter: string;
   status: string;
+  type: string;
   createdAt: Date;
-  isLatest: boolean; // Flag que indica se é o último protocolo criado
-  archiveReason?: string | null;
-  employee: {
+  protocol: {
+    id: string;
+    number: string;
+    processNumber: string;
+    presenter: string;
+    employee: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
+  parts: Array<{
     id: string;
     name: string;
-  };
+    role: string;
+    document: string | null;
+  }>;
+  subjects: Array<{
+    subject: {
+      id: string;
+      name: string;
+      parentId: string | null;
+    };
+  }>;
   _count?: {
     tramitations: number;
+    documents: number;
+    sessions: number;
+    registrations: number;
   };
-  resource?: any;
 }
 
-interface ProtocolTableProps {
-  data: Protocol[];
+interface ResourceTableProps {
+  data: Resource[];
   loading: boolean;
   onRefresh: () => void;
-  onNewProtocol: () => void;
-  userRole?: string;
 }
 
-const statusLabels: Record<string, string> = {
-  PENDENTE: 'Pendente',
-  CONCLUIDO: 'Concluído',
-  ARQUIVADO: 'Arquivado',
+const typeLabels: Record<string, string> = {
+  VOLUNTARIO: 'Voluntário',
+  OFICIO: 'Ofício',
 };
 
-const statusStyles: Record<string, string> = {
-  PENDENTE: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  CONCLUIDO: 'bg-green-100 text-green-800 border-green-300',
-  ARQUIVADO: 'bg-gray-100 text-gray-800 border-gray-300',
-};
-
-export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRole }: ProtocolTableProps) {
+export function ResourceTable({ data, loading, onRefresh }: ResourceTableProps) {
   const router = useRouter();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const canDelete = userRole === 'ADMIN';
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [protocolToDelete, setProtocolToDelete] = useState<{ id: string; number: string } | null>(null);
-  const [isConcludeModalOpen, setIsConcludeModalOpen] = useState(false);
-  const [protocolToConclude, setProtocolToConclude] = useState<{ id: string; number: string } | null>(null);
-  const [isArchiveReasonModalOpen, setIsArchiveReasonModalOpen] = useState(false);
-  const [protocolToViewReason, setProtocolToViewReason] = useState<{ number: string; archiveReason: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -110,97 +113,23 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1); // Reset para primeira página ao buscar
-  };
-
-  const handleDeleteClick = (id: string, number: string) => {
-    setProtocolToDelete({ id, number });
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!protocolToDelete) return;
-
-    try {
-      setDeletingId(protocolToDelete.id);
-      const response = await fetch(`/api/ccr/protocols/${protocolToDelete.id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        toast.success(data.message || 'Protocolo removido com sucesso');
-        setIsDeleteModalOpen(false);
-        setProtocolToDelete(null);
-        onRefresh();
-      } else {
-        const error = await response.text();
-        toast.error(error || 'Erro ao remover protocolo');
-      }
-    } catch (error) {
-      console.error('Error deleting protocol:', error);
-      toast.error('Erro ao remover protocolo');
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const handleConcludeClick = (id: string, number: string) => {
-    setProtocolToConclude({ id, number });
-    setIsConcludeModalOpen(true);
-  };
-
-  const handleViewArchiveReasonClick = (number: string, archiveReason: string) => {
-    setProtocolToViewReason({ number, archiveReason });
-    setIsArchiveReasonModalOpen(true);
-  };
-
-  const handleConfirmConclude = async (type: 'CONCLUIDO' | 'ARQUIVADO', justification?: string, resourceType?: 'VOLUNTARIO' | 'OFICIO') => {
-    if (!protocolToConclude) return;
-
-    try {
-      const response = await fetch(`/api/ccr/protocols/${protocolToConclude.id}/conclude`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, justification, resourceType }),
-      });
-
-      if (response.ok) {
-        const protocol = await response.json();
-
-        if (type === 'CONCLUIDO') {
-          toast.success(`Protocolo concluído e convertido em recurso ${protocol.resource?.resourceNumber || ''}`);
-        } else {
-          toast.success('Protocolo arquivado com sucesso');
-        }
-
-        setIsConcludeModalOpen(false);
-        setProtocolToConclude(null);
-        onRefresh();
-      } else {
-        const error = await response.text();
-        toast.error(error || 'Erro ao concluir protocolo');
-        throw new Error(error);
-      }
-    } catch (error) {
-      console.error('Error concluding protocol:', error);
-      throw error;
-    }
+    setCurrentPage(1);
   };
 
   // Filtrar dados
-  const filteredData = data.filter((protocol) => {
-    const statusMatch = statusFilter === 'all' || (protocol.status === statusFilter);
+  const filteredData = data.filter((resource) => {
+    const statusMatch = statusFilter === 'all' || (resource.status === statusFilter);
+    const typeMatch = typeFilter === 'all' || (resource.type === typeFilter);
 
     const searchMatch = !searchQuery ||
-      protocol.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      protocol.processNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      protocol.presenter.toLowerCase().includes(searchQuery.toLowerCase());
+      resource.resourceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      resource.processNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      resource.protocol.presenter.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return statusMatch && searchMatch;
+    return statusMatch && typeMatch && searchMatch;
   });
 
-  // Dados já vêm ordenados pelo número do protocolo (decrescente) do backend
+  // Dados já vêm ordenados pelo backend
   const sortedData = filteredData;
 
   // Paginação
@@ -217,18 +146,27 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
   // Contar por status
   const statusCounts = {
     all: data.length,
-    PENDENTE: data.filter(p => p.status === 'PENDENTE').length,
-    CONCLUIDO: data.filter(p => p.status === 'CONCLUIDO').length,
-    ARQUIVADO: data.filter(p => p.status === 'ARQUIVADO').length,
+    EM_ANALISE: data.filter(r => r.status === 'EM_ANALISE').length,
+    AGUARDANDO_SESSAO: data.filter(r => r.status === 'AGUARDANDO_SESSAO').length,
+    EM_SESSAO: data.filter(r => r.status === 'EM_SESSAO').length,
+    JULGADO: data.filter(r => r.status === 'JULGADO').length,
+    ARQUIVADO: data.filter(r => r.status === 'ARQUIVADO').length,
+  };
+
+  // Contar por tipo
+  const typeCounts = {
+    all: data.length,
+    VOLUNTARIO: data.filter(r => r.type === 'VOLUNTARIO').length,
+    OFICIO: data.filter(r => r.type === 'OFICIO').length,
   };
 
   if (loading) {
-    return <ProtocolTableSkeleton />;
+    return <ResourceTableSkeleton />;
   }
 
   return (
     <div className="space-y-4">
-      {/* Botões de Busca, Filtros e Novo Protocolo */}
+      {/* Botões de Busca e Filtros */}
       <div className="flex justify-end gap-2">
         {/* Busca Animada */}
         <div className="relative flex items-center">
@@ -242,7 +180,7 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
               <Input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Buscar protocolos..."
+                placeholder="Buscar recursos..."
                 value={searchQuery}
                 onChange={handleSearchChange}
                 onBlur={handleSearchBlur}
@@ -293,14 +231,45 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
                     <SelectItem value="all" className="cursor-pointer h-9">
                       Todos ({statusCounts.all})
                     </SelectItem>
-                    <SelectItem value="PENDENTE" className="cursor-pointer h-9">
-                      Pendente ({statusCounts.PENDENTE})
+                    <SelectItem value="EM_ANALISE" className="cursor-pointer h-9">
+                      Em Análise ({statusCounts.EM_ANALISE})
                     </SelectItem>
-                    <SelectItem value="CONCLUIDO" className="cursor-pointer h-9">
-                      Concluído ({statusCounts.CONCLUIDO})
+                    <SelectItem value="AGUARDANDO_SESSAO" className="cursor-pointer h-9">
+                      Aguardando Sessão ({statusCounts.AGUARDANDO_SESSAO})
+                    </SelectItem>
+                    <SelectItem value="EM_SESSAO" className="cursor-pointer h-9">
+                      Em Sessão ({statusCounts.EM_SESSAO})
+                    </SelectItem>
+                    <SelectItem value="JULGADO" className="cursor-pointer h-9">
+                      Julgado ({statusCounts.JULGADO})
                     </SelectItem>
                     <SelectItem value="ARQUIVADO" className="cursor-pointer h-9">
                       Arquivado ({statusCounts.ARQUIVADO})
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Tipo
+                </label>
+                <Select
+                  value={typeFilter}
+                  onValueChange={(value) => setTypeFilter(value)}
+                >
+                  <SelectTrigger className="h-10 w-full px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-md">
+                    <SelectItem value="all" className="cursor-pointer h-9">
+                      Todos ({typeCounts.all})
+                    </SelectItem>
+                    <SelectItem value="VOLUNTARIO" className="cursor-pointer h-9">
+                      Voluntário ({typeCounts.VOLUNTARIO})
+                    </SelectItem>
+                    <SelectItem value="OFICIO" className="cursor-pointer h-9">
+                      Ofício ({typeCounts.OFICIO})
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -309,24 +278,18 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
 
             <div className="border-t p-3">
               <div className="text-xs text-muted-foreground text-center">
-                {filteredData.length} {filteredData.length === 1 ? 'protocolo' : 'protocolos'} encontrado{filteredData.length !== 1 ? 's' : ''}
+                {filteredData.length} {filteredData.length === 1 ? 'recurso' : 'recursos'} encontrado{filteredData.length !== 1 ? 's' : ''}
               </div>
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <Button size="sm" onClick={onNewProtocol} className="h-8 gap-2 cursor-pointer">
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Novo Protocolo</span>
-        </Button>
       </div>
 
       {/* Tabela */}
       {filteredData.length === 0 ? (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
           <div className="p-8 text-center">
-            <p className="text-muted-foreground">Nenhum protocolo encontrado.</p>
-            <p className="text-sm text-muted-foreground mt-2">Clique em &quot;Novo Protocolo&quot; para adicionar.</p>
+            <p className="text-muted-foreground">Nenhum recurso encontrado.</p>
           </div>
         </div>
       ) : (
@@ -336,41 +299,47 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
               <Table className="min-w-[700px]">
                 <TableHeader>
                   <TableRow className="bg-muted hover:bg-muted border-b">
-                    <TableHead className="font-semibold">Número</TableHead>
+                    <TableHead className="font-semibold">Nº Recurso</TableHead>
                     <TableHead className="font-semibold">Data Criação</TableHead>
                     <TableHead className="font-semibold">Nº Processo</TableHead>
-                    <TableHead className="font-semibold">Apresentante</TableHead>
+                    <TableHead className="font-semibold">Recorrente</TableHead>
+                    <TableHead className="font-semibold">Tipo</TableHead>
                     <TableHead className="font-semibold">Status</TableHead>
                     <TableHead className="w-[70px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedData.map((protocol) => (
-                    <TableRow key={protocol.id} className="bg-white hover:bg-muted/40 min-h-[49px]">
+                  {paginatedData.map((resource) => (
+                    <TableRow key={resource.id} className="bg-white hover:bg-muted/40 min-h-[49px]">
                       <TableCell className="font-medium text-sm">
-                        {protocol.number}
+                        {resource.resourceNumber}
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">
-                          {format(new Date(protocol.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
+                          {format(new Date(resource.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
                         </span>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">
-                          {protocol.processNumber}
+                          {resource.processNumber}
                         </span>
                       </TableCell>
                       <TableCell>
                         <div className="max-w-[200px] truncate">
-                          {protocol.presenter}
+                          {resource.protocol.presenter}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {typeLabels[resource.type] || resource.type}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <span className={cn(
                           'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border',
-                          statusStyles[protocol.status] || 'bg-gray-100 text-gray-800 border-gray-300'
+                          getResourceStatusColor(resource.status)
                         )}>
-                          {statusLabels[protocol.status] || protocol.status}
+                          {getResourceStatusLabel(resource.status)}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -382,53 +351,13 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {protocol.status === 'PENDENTE' && (
-                              <>
-                                <DropdownMenuItem
-                                  onClick={() => router.push(`/ccr/protocolos/${protocol.id}`)}
-                                  className="cursor-pointer h-9"
-                                >
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleConcludeClick(protocol.id, protocol.number)}
-                                  className="cursor-pointer h-9"
-                                >
-                                  <CheckCircle className="mr-2 h-4 w-4" />
-                                  Concluir
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {/* TODO: Revisar página de detalhes do recurso */}
-                            {protocol.status === 'CONCLUIDO' && protocol.resource && (
-                              <DropdownMenuItem
-                                onClick={() => router.push(`/ccr/recursos/${protocol.resource.id}`)}
-                                className="cursor-pointer h-9"
-                              >
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                Ver Recurso
-                              </DropdownMenuItem>
-                            )}
-                            {protocol.status === 'ARQUIVADO' && protocol.archiveReason && (
-                              <DropdownMenuItem
-                                onClick={() => handleViewArchiveReasonClick(protocol.number, protocol.archiveReason!)}
-                                className="cursor-pointer h-9"
-                              >
-                                <FileText className="mr-2 h-4 w-4" />
-                                Ver Justificativa
-                              </DropdownMenuItem>
-                            )}
-                            {canDelete && protocol.isLatest && protocol.status !== 'CONCLUIDO' && (
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteClick(protocol.id, protocol.number)}
-                                disabled={deletingId === protocol.id || !!protocol.resource}
-                                className="cursor-pointer h-9"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/ccr/recursos/${resource.id}`)}
+                              className="cursor-pointer h-9"
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              Ver Detalhes
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -535,40 +464,6 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
           </div>
         </>
       )}
-
-      {/* Modal de Confirmação de Exclusão */}
-      <DeleteModal
-        isOpen={isDeleteModalOpen}
-        protocolNumber={protocolToDelete?.number || ''}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setProtocolToDelete(null);
-        }}
-        onConfirm={handleConfirmDelete}
-      />
-
-      {/* Modal de Conclusão */}
-      <ConcludeModal
-        isOpen={isConcludeModalOpen}
-        protocolNumber={protocolToConclude?.number || ''}
-        protocolId={protocolToConclude?.id || ''}
-        onClose={() => {
-          setIsConcludeModalOpen(false);
-          setProtocolToConclude(null);
-        }}
-        onConfirm={handleConfirmConclude}
-      />
-
-      {/* Modal de Justificativa de Arquivamento */}
-      <ArchiveReasonModal
-        isOpen={isArchiveReasonModalOpen}
-        protocolNumber={protocolToViewReason?.number || ''}
-        archiveReason={protocolToViewReason?.archiveReason || ''}
-        onClose={() => {
-          setIsArchiveReasonModalOpen(false);
-          setProtocolToViewReason(null);
-        }}
-      />
     </div>
   );
 }
