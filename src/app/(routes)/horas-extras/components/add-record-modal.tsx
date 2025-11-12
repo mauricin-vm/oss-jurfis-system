@@ -294,6 +294,7 @@ export function AddRecordModal({ isOpen, onClose, onSave }: AddRecordModalProps)
                   className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   placeholder="00:00"
                   disabled={isSubmitting}
+                  autoComplete="off"
                 />
               </div>
 
@@ -308,6 +309,7 @@ export function AddRecordModal({ isOpen, onClose, onSave }: AddRecordModalProps)
                   className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   placeholder="00:00"
                   disabled={isSubmitting}
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -332,6 +334,7 @@ export function AddRecordModal({ isOpen, onClose, onSave }: AddRecordModalProps)
                 onChange={handleFileChange}
                 className="hidden"
                 disabled={isSubmitting}
+                autoComplete="off"
               />
               <div className="flex items-center gap-3">
                 <button

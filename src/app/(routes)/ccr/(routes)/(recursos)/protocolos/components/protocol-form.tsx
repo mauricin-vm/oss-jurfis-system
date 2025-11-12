@@ -283,8 +283,8 @@ export function ProtocolForm({ initialData }: ProtocolFormProps) {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          processNumber: data.processNumber, // Envia com formatação
-          presenter: data.presenter,
+          processNumber: data.processNumber.trim(), // Envia com formatação
+          presenter: data.presenter.trim(),
           ...(data.createdAt && { createdAt: new Date(data.createdAt + 'T00:00:00').toISOString() }), // Converter para ISO mantendo a data correta
           parts: validParts,
         }),
@@ -426,9 +426,9 @@ export function ProtocolForm({ initialData }: ProtocolFormProps) {
 
           <div className="space-y-3">
             {parts.map((part, partIndex) => (
-              <div key={partIndex} className="flex gap-3 items-start">
-                {/* Nome */}
-                <div className="flex-1 min-w-0">
+              <div key={partIndex} className="grid grid-cols-2 gap-3 items-start">
+                {/* Nome - ocupa metade da largura */}
+                <div>
                   <Input
                     placeholder="Nome da parte"
                     value={part.name}
@@ -438,29 +438,30 @@ export function ProtocolForm({ initialData }: ProtocolFormProps) {
                   />
                 </div>
 
-                {/* Tipo */}
-                <div className="w-[180px]">
-                  <Select
-                    value={part.role}
-                    onValueChange={(value) => updatePart(partIndex, 'role', value)}
-                    disabled={isConverted}
-                  >
-                    <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
-                      <SelectValue placeholder="Tipo" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-lg">
-                      {roleOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Segunda metade: Tipo, Tipo Contato, Campo Contato e Botão X */}
+                <div className="flex gap-2 items-center">
+                  {/* Tipo */}
+                  <div className="flex-1">
+                    <Select
+                      value={part.role}
+                      onValueChange={(value) => updatePart(partIndex, 'role', value)}
+                      disabled={isConverted}
+                    >
+                      <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-lg">
+                        {roleOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Contato */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex gap-2">
+                  {/* Tipo de Contato */}
+                  <div className="flex-1">
                     <Select
                       value={part.contacts[0]?.type || 'TELEFONE'}
                       onValueChange={(value) =>
@@ -468,7 +469,7 @@ export function ProtocolForm({ initialData }: ProtocolFormProps) {
                       }
                       disabled={isConverted}
                     >
-                      <SelectTrigger className="h-10 w-[120px] px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
+                      <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-lg">
@@ -479,6 +480,10 @@ export function ProtocolForm({ initialData }: ProtocolFormProps) {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  {/* Campo de Contato */}
+                  <div className="flex-1">
                     <Input
                       placeholder={
                         part.contacts[0]?.type === 'EMAIL'
@@ -490,23 +495,23 @@ export function ProtocolForm({ initialData }: ProtocolFormProps) {
                         updateContact(partIndex, 0, 'value', e.target.value)
                       }
                       disabled={isConverted}
-                      className="h-10 flex-1 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
+                      className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
                     />
                   </div>
-                </div>
 
-                {/* Botão Remover */}
-                {!isConverted && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removePart(partIndex)}
-                    className="shrink-0 cursor-pointer"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
+                  {/* Botão Remover */}
+                  {!isConverted && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removePart(partIndex)}
+                      className="shrink-0 cursor-pointer"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
 

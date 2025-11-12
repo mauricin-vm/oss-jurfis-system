@@ -81,8 +81,9 @@ export function AuthorityForm({ initialData }: AuthorityFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...data,
+          name: data.name.trim(),
           phone: data.phone ? data.phone.replace(/\D/g, '') : null,
-          email: data.email || null,
+          email: data.email ? data.email.trim() : null,
         }),
       });
 
@@ -125,47 +126,49 @@ export function AuthorityForm({ initialData }: AuthorityFormProps) {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Telefone</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="(67) 98765-4321"
-                  disabled={loading}
-                  {...field}
-                  onChange={(e) => {
-                    const formatted = formatPhone(e.target.value);
-                    field.onChange(formatted);
-                  }}
-                  maxLength={15}
-                  className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Telefone</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="(67) 98765-4321"
+                    disabled={loading}
+                    {...field}
+                    onChange={(e) => {
+                      const formatted = formatPhone(e.target.value);
+                      field.onChange(formatted);
+                    }}
+                    maxLength={15}
+                    className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input
-                  type="email"
-                  placeholder="email@exemplo.com"
-                  disabled={loading}
-                  {...field}
-                  className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    placeholder="email@exemplo.com"
+                    disabled={loading}
+                    {...field}
+                    className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}

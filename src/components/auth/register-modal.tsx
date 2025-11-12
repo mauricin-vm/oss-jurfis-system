@@ -183,6 +183,7 @@ export function RegisterModal({ isOpen, onClose, onSuccess }: RegisterModalProps
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                 placeholder="Digite seu nome e sobrenome"
                 disabled={isLoading}
+                autoComplete="off"
               />
             </div>
 
@@ -197,6 +198,7 @@ export function RegisterModal({ isOpen, onClose, onSuccess }: RegisterModalProps
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                 placeholder="exemplo@email.com"
                 disabled={isLoading}
+                autoComplete="off"
               />
             </div>
 
@@ -211,6 +213,7 @@ export function RegisterModal({ isOpen, onClose, onSuccess }: RegisterModalProps
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                 placeholder="Digite sua senha"
                 disabled={isLoading}
+                autoComplete="off"
               />
             </div>
 
@@ -225,6 +228,7 @@ export function RegisterModal({ isOpen, onClose, onSuccess }: RegisterModalProps
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                 placeholder="Digite o código secreto"
                 disabled={isLoading}
+                autoComplete="off"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Código fornecido pelo administrador do sistema

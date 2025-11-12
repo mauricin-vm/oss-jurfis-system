@@ -49,7 +49,13 @@ export async function GET(req: Request) {
       },
     });
 
-    return NextResponse.json(subjects);
+    // Adicionar flag isInUse para indicar se o assunto está sendo usado
+    const subjectsWithFlag = subjects.map(subject => ({
+      ...subject,
+      isInUse: subject._count.resourceLinks > 0 || subject._count.children > 0,
+    }));
+
+    return NextResponse.json(subjectsWithFlag);
   } catch (error) {
     console.log('[SUBJECTS_GET]', error);
     return new NextResponse('Internal error', { status: 500 });

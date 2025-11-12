@@ -38,7 +38,6 @@ interface Resource {
     };
   }>;
   _count?: {
-    tramitations: number;
     documents: number;
     sessions: number;
     registrations: number;

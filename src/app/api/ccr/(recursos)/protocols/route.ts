@@ -12,7 +12,6 @@ interface Contact {
 interface GroupedPart {
   name: string;
   role: string;
-  document: string | null;
   contacts: Contact[];
 }
 
@@ -158,11 +157,11 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { processNumber, presenter, parts = [] } = body;
 
-    if (!processNumber) {
+    if (!processNumber || !processNumber.trim()) {
       return new NextResponse('Número do processo é obrigatório', { status: 400 });
     }
 
-    if (!presenter) {
+    if (!presenter || !presenter.trim()) {
       return new NextResponse('Apresentante é obrigatório', { status: 400 });
     }
 
@@ -173,8 +172,8 @@ export async function POST(req: Request) {
     const protocol = await prismadb.protocol.create({
       data: {
         ...protocolNumberData,
-        processNumber,
-        presenter,
+        processNumber: processNumber.trim(),
+        presenter: presenter.trim(),
         employeeId: session.user.id,
         status: 'PENDENTE',
       },
@@ -189,7 +188,6 @@ export async function POST(req: Request) {
         groupedParts[key] = {
           name: part.name,
           role: part.role,
-          document: part.document || null,
           contacts: [],
         };
       }
@@ -219,7 +217,6 @@ export async function POST(req: Request) {
           data: {
             name: partData.name,
             role: partData.role as any,
-            document: partData.document,
             processNumber: processNumber,
             createdBy: session.user.id,
           },

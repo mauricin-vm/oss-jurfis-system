@@ -51,7 +51,6 @@ export async function GET(req: Request) {
         },
         _count: {
           select: {
-            tramitations: true,
             documents: true,
             sessions: true,
             registrations: true,

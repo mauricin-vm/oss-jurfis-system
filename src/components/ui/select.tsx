@@ -1,6 +1,6 @@
 import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
-import { Check, ChevronDown, ChevronUp } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, Search } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -67,34 +67,151 @@ SelectScrollDownButton.displayName =
 
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
-    <SelectPrimitive.Content
-      ref={ref}
-      className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        position === "popper" &&
-          "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
-        className
-      )}
-      position={position}
-      {...props}
-    >
-      <SelectScrollUpButton />
-      <SelectPrimitive.Viewport
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content> & {
+    searchable?: boolean
+  }
+>(({ className, children, position = "popper", searchable = true, ...props }, ref) => {
+  const [search, setSearch] = React.useState("")
+  const [allowNavigationFocus, setAllowNavigationFocus] = React.useState(false)
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
+
+  // Keep input focused when filtered list changes (useLayoutEffect runs synchronously)
+  React.useLayoutEffect(() => {
+    // Don't re-focus if user is navigating with arrows
+    if (!allowNavigationFocus && searchInputRef.current && document.activeElement !== searchInputRef.current) {
+      const activeElement = document.activeElement as HTMLElement
+      // Don't re-focus if an option has focus
+      if (!activeElement?.hasAttribute('data-radix-select-item')) {
+        searchInputRef.current.focus()
+      }
+    }
+  })
+
+  // Filter children based on search
+  const filteredChildren = React.useMemo(() => {
+    if (!search || !searchable) return children
+
+    const searchLower = search.toLowerCase()
+
+    const filterNode = (node: React.ReactNode): React.ReactNode => {
+      if (!React.isValidElement(node)) return node
+
+      // Check if it's a SelectItem by checking for value prop
+      const hasValueProp = 'value' in node.props
+
+      // If it's a SelectItem, check if it matches the search
+      if (hasValueProp) {
+        const itemText = String(node.props.children || "").toLowerCase()
+        const itemValue = String(node.props.value || "").toLowerCase()
+        if (!itemText.includes(searchLower) && !itemValue.includes(searchLower)) {
+          return null
+        }
+        return node
+      }
+
+      // If it has children, recursively filter them
+      if (node.props?.children) {
+        const filteredNodeChildren = React.Children.map(node.props.children, filterNode)
+        if (!filteredNodeChildren || filteredNodeChildren.every(child => child === null)) {
+          return null
+        }
+        return React.cloneElement(node, {}, filteredNodeChildren)
+      }
+
+      return node
+    }
+
+    return React.Children.map(children, filterNode)
+  }, [children, search, searchable])
+
+  return (
+    <SelectPrimitive.Portal>
+      <SelectPrimitive.Content
+        ref={ref}
         className={cn(
-          "p-1",
+          "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
           position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+            "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+          className
         )}
+        position={position}
+        {...props}
+        onCloseAutoFocus={(e) => {
+          setSearch("")
+          setAllowNavigationFocus(false)
+          props.onCloseAutoFocus?.(e)
+        }}
+        onPointerDownOutside={(e) => {
+          // Don't close if clicking on the search input
+          const target = e.target as HTMLElement
+          if (searchInputRef.current?.contains(target)) {
+            e.preventDefault()
+          }
+          props.onPointerDownOutside?.(e)
+        }}
       >
-        {children}
-      </SelectPrimitive.Viewport>
-      <SelectScrollDownButton />
-    </SelectPrimitive.Content>
-  </SelectPrimitive.Portal>
-))
+        {searchable && (
+          <div className="flex items-center border-b px-3 pb-2 pt-2">
+            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Buscar..."
+              className="flex h-8 w-full rounded-md bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                // Allow navigation keys to pass through to the Select
+                const navigationKeys = ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Home', 'End', 'PageUp', 'PageDown']
+
+                if (navigationKeys.includes(e.key)) {
+                  // Mark that we're allowing navigation focus
+                  setAllowNavigationFocus(true)
+                  return
+                }
+
+                // For typing keys, ensure navigation mode is off
+                setAllowNavigationFocus(false)
+
+                // Block all other keys from the Select
+                e.stopPropagation()
+              }}
+              onBlur={(e) => {
+                // Re-focus immediately unless navigating or clicking on an option
+                const relatedTarget = e.relatedTarget as HTMLElement
+                if (!relatedTarget?.hasAttribute('data-radix-select-item') && !allowNavigationFocus) {
+                  e.currentTarget.focus()
+                }
+              }}
+              onFocus={() => {
+                // When input gets focus back, disable navigation mode
+                setAllowNavigationFocus(false)
+              }}
+              autoFocus
+              autoComplete="off"
+            />
+          </div>
+        )}
+        <SelectScrollUpButton />
+        <SelectPrimitive.Viewport
+          className={cn(
+            "p-1",
+            position === "popper" &&
+              "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+          )}
+        >
+          {filteredChildren}
+          {searchable && search && (!filteredChildren || React.Children.count(filteredChildren) === 0) && (
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              Nenhum resultado encontrado.
+            </div>
+          )}
+        </SelectPrimitive.Viewport>
+        <SelectScrollDownButton />
+      </SelectPrimitive.Content>
+    </SelectPrimitive.Portal>
+  )
+})
 SelectContent.displayName = SelectPrimitive.Content.displayName
 
 const SelectLabel = React.forwardRef<

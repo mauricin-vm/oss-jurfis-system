@@ -74,7 +74,6 @@ export async function GET(
         },
         _count: {
           select: {
-            tramitations: true,
             documents: true,
             sessions: true,
             registrations: true,
@@ -191,7 +190,6 @@ export async function PATCH(
         },
         _count: {
           select: {
-            tramitations: true,
             documents: true,
             sessions: true,
             registrations: true,

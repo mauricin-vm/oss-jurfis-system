@@ -116,6 +116,7 @@ export function MessageInput({ selectedChat, onSendMessage, onFileUpload }: Mess
             className="hidden"
             onChange={handleFileUpload}
             accept="*/*"
+            autoComplete="off"
           />
 
           <button
@@ -143,6 +144,7 @@ export function MessageInput({ selectedChat, onSendMessage, onFileUpload }: Mess
             onKeyPress={handleKeyPress}
             className="flex-1 resize-none bg-transparent px-3 py-2 min-h-[36px] max-h-[120px] focus:outline-none placeholder-gray-500 text-gray-900"
             rows={1}
+            autoComplete="off"
           />
 
           <button

@@ -125,13 +125,15 @@ export function ResourceForm({ initialData }: ResourceFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...data,
+          processNumber: data.processNumber.trim(),
+          taxpayer: data.taxpayer.trim(),
           fiscalYear: parseInt(data.fiscalYear),
           taxValue: data.taxValue ? parseFloat(data.taxValue) : null,
           penalty: data.penalty ? parseFloat(data.penalty) : null,
           interest: data.interest ? parseFloat(data.interest) : null,
           totalValue: data.totalValue ? parseFloat(data.totalValue) : null,
           taxType: data.taxType || null,
-          description: data.description || null,
+          description: data.description ? data.description.trim() : null,
           subjectIds: selectedSubjects.length > 0 ? selectedSubjects : null,
         }),
       });

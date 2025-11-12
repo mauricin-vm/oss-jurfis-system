@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { CCRPageWrapper } from '../../../../../components/ccr-page-wrapper';
 import { Button } from '@/components/ui/button';
 import { Pencil, Newspaper, Phone, MapPin } from 'lucide-react';
@@ -9,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { getResourceStatusLabel, getResourceStatusColor } from '../../../../../hooks/resource-status';
+import { TramitationCard } from '../../../tramitacoes/components/tramitation-card';
+import { toast } from 'sonner';
 
 const typeLabels: Record<string, string> = {
   VOLUNTARIO: 'Voluntário',
@@ -28,8 +31,11 @@ const formatAttachedProcesses = (processes: string[]) => {
 export default function RecursoDetalhesPage() {
   const router = useRouter();
   const params = useParams();
+  const { data: session } = useSession();
   const [resource, setResource] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [tramitations, setTramitations] = useState<any[]>([]);
+  const [loadingTramitations, setLoadingTramitations] = useState(false);
 
   useEffect(() => {
     if (params?.id) {
@@ -40,6 +46,70 @@ export default function RecursoDetalhesPage() {
         .finally(() => setLoading(false));
     }
   }, [params?.id, router]);
+
+  const fetchTramitations = async () => {
+    if (!resource?.processNumber) return;
+
+    try {
+      setLoadingTramitations(true);
+      const response = await fetch(`/api/ccr/tramitations?processNumber=${encodeURIComponent(resource.processNumber)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTramitations(data);
+      }
+    } catch (error) {
+      console.error('Error fetching tramitations:', error);
+      toast.error('Erro ao carregar tramitações');
+    } finally {
+      setLoadingTramitations(false);
+    }
+  };
+
+  useEffect(() => {
+    if (resource?.processNumber) {
+      fetchTramitations();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resource?.processNumber]);
+
+  const handleMarkAsReceived = async (id: string) => {
+    try {
+      const response = await fetch(`/api/ccr/tramitations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'ENTREGUE', returnDate: new Date() }),
+      });
+
+      if (response.ok) {
+        toast.success('Tramitação marcada como recebida');
+        fetchTramitations();
+      } else {
+        throw new Error('Erro ao atualizar tramitação');
+      }
+    } catch (error) {
+      console.error('Error marking as received:', error);
+      toast.error('Erro ao marcar tramitação como recebida');
+    }
+  };
+
+  const handleDeleteTramitation = async (id: string) => {
+    try {
+      const response = await fetch(`/api/ccr/tramitations/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast.success('Tramitação removida com sucesso');
+        fetchTramitations();
+      } else {
+        const data = await response.json();
+        toast.error(data.message || 'Erro ao remover tramitação');
+      }
+    } catch (error) {
+      console.error('Error deleting tramitation:', error);
+      toast.error('Erro ao remover tramitação');
+    }
+  };
 
   if (loading) {
     const breadcrumbs = [
@@ -528,9 +598,28 @@ export default function RecursoDetalhesPage() {
           </TabsContent>
 
           <TabsContent value="tramitacoes" className="mt-6 overflow-y-auto max-h-[calc(100vh-140px)] focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0">
-            <div className="bg-white rounded-lg border p-8 text-center">
-              <p className="text-muted-foreground">Funcionalidade em desenvolvimento</p>
-            </div>
+            {loadingTramitations ? (
+              <div className="bg-white rounded-lg border p-8 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto" />
+                <p className="mt-4 text-sm text-gray-600">Carregando tramitações...</p>
+              </div>
+            ) : tramitations.length === 0 ? (
+              <div className="bg-white rounded-lg border p-8 text-center">
+                <p className="text-muted-foreground">Nenhuma tramitação encontrada para este processo.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {tramitations.map((tramitation) => (
+                  <TramitationCard
+                    key={tramitation.id}
+                    tramitation={tramitation}
+                    onMarkAsReceived={handleMarkAsReceived}
+                    onDelete={handleDeleteTramitation}
+                    userRole={session?.user?.role}
+                  />
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="julgamento" className="mt-6 overflow-y-auto max-h-[calc(100vh-140px)] focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0">

@@ -90,12 +90,13 @@ export function SectorForm({ initialData }: SectorFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...data,
-          abbreviation: data.abbreviation || null,
-          dispatchCode: data.dispatchCode || null,
-          description: data.description || null,
+          name: data.name.trim(),
+          abbreviation: data.abbreviation ? data.abbreviation.trim() : null,
+          dispatchCode: data.dispatchCode ? data.dispatchCode.trim() : null,
+          description: data.description ? data.description.trim() : null,
           phone: data.phone ? data.phone.replace(/\D/g, '') : null,
-          email: data.email || null,
-          address: data.address || null,
+          email: data.email ? data.email.trim() : null,
+          address: data.address ? data.address.trim() : null,
         }),
       });
 

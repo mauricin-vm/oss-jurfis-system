@@ -101,6 +101,8 @@ export function SubjectForm({ initialData }: SubjectFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...data,
+          name: data.name.trim(),
+          description: data.description ? data.description.trim() : undefined,
           parentId: data.parentId || null,
         }),
       });

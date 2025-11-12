@@ -24,12 +24,26 @@ export async function GET(req: Request) {
       where: {
         ...(isActive !== null && { isActive: isActive === 'true' }),
       },
+      include: {
+        _count: {
+          select: {
+            tramitations: true,
+            notifications: true,
+          },
+        },
+      },
       orderBy: {
         name: 'asc',
       },
     });
 
-    return NextResponse.json(sectors);
+    // Adicionar flag isInUse para indicar se o setor está sendo usado
+    const sectorsWithFlag = sectors.map(sector => ({
+      ...sector,
+      isInUse: sector._count.tramitations > 0 || sector._count.notifications > 0,
+    }));
+
+    return NextResponse.json(sectorsWithFlag);
   } catch (error) {
     console.log('[SECTORS_GET]', error);
     return new NextResponse('Internal error', { status: 500 });

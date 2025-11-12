@@ -67,7 +67,6 @@ interface Resource {
     };
   }>;
   _count?: {
-    tramitations: number;
     documents: number;
     sessions: number;
     registrations: number;
@@ -147,10 +146,19 @@ export function ResourceTable({ data, loading, onRefresh }: ResourceTableProps) 
   const statusCounts = {
     all: data.length,
     EM_ANALISE: data.filter(r => r.status === 'EM_ANALISE').length,
-    AGUARDANDO_SESSAO: data.filter(r => r.status === 'AGUARDANDO_SESSAO').length,
-    EM_SESSAO: data.filter(r => r.status === 'EM_SESSAO').length,
-    JULGADO: data.filter(r => r.status === 'JULGADO').length,
-    ARQUIVADO: data.filter(r => r.status === 'ARQUIVADO').length,
+    TEMPESTIVIDADE: data.filter(r => r.status === 'TEMPESTIVIDADE').length,
+    CONTRARRAZAO: data.filter(r => r.status === 'CONTRARRAZAO').length,
+    PARECER_PGM: data.filter(r => r.status === 'PARECER_PGM').length,
+    DISTRIBUICAO: data.filter(r => r.status === 'DISTRIBUICAO').length,
+    NOTIFICACAO_JULGAMENTO: data.filter(r => r.status === 'NOTIFICACAO_JULGAMENTO').length,
+    JULGAMENTO: data.filter(r => r.status === 'JULGAMENTO').length,
+    DILIGENCIA: data.filter(r => r.status === 'DILIGENCIA').length,
+    PEDIDO_VISTA: data.filter(r => r.status === 'PEDIDO_VISTA').length,
+    SUSPENSO: data.filter(r => r.status === 'SUSPENSO').length,
+    PUBLICACAO_ACORDAO: data.filter(r => r.status === 'PUBLICACAO_ACORDAO').length,
+    ASSINATURA_ACORDAO: data.filter(r => r.status === 'ASSINATURA_ACORDAO').length,
+    NOTIFICACAO_DECISAO: data.filter(r => r.status === 'NOTIFICACAO_DECISAO').length,
+    CONCLUIDO: data.filter(r => r.status === 'CONCLUIDO').length,
   };
 
   // Contar por tipo
@@ -234,17 +242,44 @@ export function ResourceTable({ data, loading, onRefresh }: ResourceTableProps) 
                     <SelectItem value="EM_ANALISE" className="cursor-pointer h-9">
                       Em Análise ({statusCounts.EM_ANALISE})
                     </SelectItem>
-                    <SelectItem value="AGUARDANDO_SESSAO" className="cursor-pointer h-9">
-                      Aguardando Sessão ({statusCounts.AGUARDANDO_SESSAO})
+                    <SelectItem value="TEMPESTIVIDADE" className="cursor-pointer h-9">
+                      Tempestividade ({statusCounts.TEMPESTIVIDADE})
                     </SelectItem>
-                    <SelectItem value="EM_SESSAO" className="cursor-pointer h-9">
-                      Em Sessão ({statusCounts.EM_SESSAO})
+                    <SelectItem value="CONTRARRAZAO" className="cursor-pointer h-9">
+                      Contrarrazão ({statusCounts.CONTRARRAZAO})
                     </SelectItem>
-                    <SelectItem value="JULGADO" className="cursor-pointer h-9">
-                      Julgado ({statusCounts.JULGADO})
+                    <SelectItem value="PARECER_PGM" className="cursor-pointer h-9">
+                      Parecer PGM ({statusCounts.PARECER_PGM})
                     </SelectItem>
-                    <SelectItem value="ARQUIVADO" className="cursor-pointer h-9">
-                      Arquivado ({statusCounts.ARQUIVADO})
+                    <SelectItem value="DISTRIBUICAO" className="cursor-pointer h-9">
+                      Distribuição ({statusCounts.DISTRIBUICAO})
+                    </SelectItem>
+                    <SelectItem value="NOTIFICACAO_JULGAMENTO" className="cursor-pointer h-9">
+                      Notificação Julgamento ({statusCounts.NOTIFICACAO_JULGAMENTO})
+                    </SelectItem>
+                    <SelectItem value="JULGAMENTO" className="cursor-pointer h-9">
+                      Julgamento ({statusCounts.JULGAMENTO})
+                    </SelectItem>
+                    <SelectItem value="DILIGENCIA" className="cursor-pointer h-9">
+                      Diligência ({statusCounts.DILIGENCIA})
+                    </SelectItem>
+                    <SelectItem value="PEDIDO_VISTA" className="cursor-pointer h-9">
+                      Pedido de Vista ({statusCounts.PEDIDO_VISTA})
+                    </SelectItem>
+                    <SelectItem value="SUSPENSO" className="cursor-pointer h-9">
+                      Suspenso ({statusCounts.SUSPENSO})
+                    </SelectItem>
+                    <SelectItem value="PUBLICACAO_ACORDAO" className="cursor-pointer h-9">
+                      Publicação Acórdão ({statusCounts.PUBLICACAO_ACORDAO})
+                    </SelectItem>
+                    <SelectItem value="ASSINATURA_ACORDAO" className="cursor-pointer h-9">
+                      Assinatura Acórdão ({statusCounts.ASSINATURA_ACORDAO})
+                    </SelectItem>
+                    <SelectItem value="NOTIFICACAO_DECISAO" className="cursor-pointer h-9">
+                      Notificação Decisão ({statusCounts.NOTIFICACAO_DECISAO})
+                    </SelectItem>
+                    <SelectItem value="CONCLUIDO" className="cursor-pointer h-9">
+                      Concluído ({statusCounts.CONCLUIDO})
                     </SelectItem>
                   </SelectContent>
                 </Select>

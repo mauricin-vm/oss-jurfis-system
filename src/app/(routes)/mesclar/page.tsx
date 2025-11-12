@@ -270,6 +270,7 @@ export default function MergePdfPage() {
                   accept=".pdf"
                   onChange={handleFileSelect}
                   className="hidden"
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -299,6 +300,7 @@ export default function MergePdfPage() {
                     onChange={handleFileSelect}
                     className="hidden"
                     id="add-more-files"
+                    autoComplete="off"
                   />
                   <Button onClick={addMoreFiles} variant="outline" className="cursor-pointer">
                     + Adicionar PDF

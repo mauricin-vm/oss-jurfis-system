@@ -109,6 +109,14 @@ export default function CCRLayout({ children }: { children: React.ReactNode }) {
           onClick: () => router.push('/ccr/assuntos/novo'),
         });
       }
+      // Se estiver na página de autoridades, adicionar botão "Nova Autoridade"
+      else if (pathname?.startsWith('/ccr/autoridades')) {
+        customActions.push({
+          label: 'Nova Autoridade',
+          icon: Plus,
+          onClick: () => router.push('/ccr/autoridades/novo'),
+        });
+      }
       // Se estiver na página de membros, adicionar botão "Novo Membro"
       else if (pathname?.startsWith('/ccr/membros')) {
         customActions.push({
@@ -131,6 +139,14 @@ export default function CCRLayout({ children }: { children: React.ReactNode }) {
           label: 'Novo Protocolo',
           icon: Plus,
           onClick: () => router.push('/ccr/protocolos/novo'),
+        });
+      }
+      // Se estiver na página de tramitações, adicionar botão "Nova Tramitação"
+      else if (pathname?.startsWith('/ccr/tramitacoes')) {
+        customActions.push({
+          label: 'Nova Tramitação',
+          icon: Plus,
+          onClick: () => router.push('/ccr/tramitacoes/nova'),
         });
       }
 

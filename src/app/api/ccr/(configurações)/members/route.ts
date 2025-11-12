@@ -24,12 +24,36 @@ export async function GET(req: Request) {
       where: {
         ...(isActive !== null && { isActive: isActive === 'true' }),
       },
+      include: {
+        _count: {
+          select: {
+            tramitations: true,
+            sessionsAsPresident: true,
+            sessionsPresent: true,
+            sessionResourcesAsPresident: true,
+            distributions: true,
+            votes: true,
+          },
+        },
+      },
       orderBy: {
         name: 'asc',
       },
     });
 
-    return NextResponse.json(members);
+    // Adicionar flag isInUse para indicar se o membro está sendo usado
+    const membersWithFlag = members.map(member => ({
+      ...member,
+      isInUse:
+        member._count.tramitations > 0 ||
+        member._count.sessionsAsPresident > 0 ||
+        member._count.sessionsPresent > 0 ||
+        member._count.sessionResourcesAsPresident > 0 ||
+        member._count.distributions > 0 ||
+        member._count.votes > 0,
+    }));
+
+    return NextResponse.json(membersWithFlag);
   } catch (error) {
     console.log('[MEMBERS_GET]', error);
     return new NextResponse('Internal error', { status: 500 });

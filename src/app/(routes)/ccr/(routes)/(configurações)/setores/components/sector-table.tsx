@@ -43,6 +43,7 @@ interface Sector {
   email: string | null;
   address: string | null;
   isActive: boolean;
+  isInUse?: boolean;
 }
 
 interface SectorTableProps {
@@ -307,7 +308,7 @@ export function SectorTable({ data, loading, onRefresh, onNewSector, userRole }:
                               <Pencil className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
-                            {canDelete && (
+                            {canDelete && !sector.isInUse && (
                               <DropdownMenuItem
                                 onClick={() => handleDeleteClick(sector.id, sector.name)}
                                 disabled={deletingId === sector.id}

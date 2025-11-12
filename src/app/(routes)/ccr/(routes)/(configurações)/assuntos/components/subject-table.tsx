@@ -39,6 +39,7 @@ interface Subject {
   description: string | null;
   parentId: string | null;
   isActive: boolean;
+  isInUse?: boolean;
   parent?: {
     id: string;
     name: string;
@@ -384,7 +385,7 @@ export function SubjectTable({ data, loading, onRefresh, onNewSubject, userRole 
                               <Pencil className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
-                            {canDelete && (
+                            {canDelete && !subject.isInUse && (
                               <DropdownMenuItem
                                 onClick={() => handleDeleteClick(subject.id, subject.name)}
                                 disabled={deletingId === subject.id}

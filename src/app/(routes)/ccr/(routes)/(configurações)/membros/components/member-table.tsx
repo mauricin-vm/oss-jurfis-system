@@ -44,6 +44,7 @@ interface Member {
   email: string | null;
   gender: string | null;
   isActive: boolean;
+  isInUse?: boolean;
 }
 
 interface MemberTableProps {
@@ -340,7 +341,7 @@ export function MemberTable({ data, loading, onRefresh, onNewMember, userRole }:
                               <Pencil className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
-                            {canDelete && (
+                            {canDelete && !member.isInUse && (
                               <DropdownMenuItem
                                 onClick={() => handleDeleteClick(member.id, member.name)}
                                 disabled={deletingId === member.id}

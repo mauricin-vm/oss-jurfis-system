@@ -39,6 +39,7 @@ interface Authority {
   phone: string | null;
   email: string | null;
   isActive: boolean;
+  isInUse?: boolean;
 }
 
 interface AuthorityTableProps {
@@ -302,7 +303,7 @@ export function AuthorityTable({ data, loading, onRefresh, onNewAuthority, userR
                               <Pencil className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
-                            {canDelete && (
+                            {canDelete && !authority.isInUse && (
                               <DropdownMenuItem
                                 onClick={() => handleDeleteClick(authority.id, authority.name)}
                                 className="cursor-pointer text-red-600 h-9"

@@ -13,14 +13,21 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const protocolId = searchParams.get('protocolId');
-    const resourceId = searchParams.get('resourceId');
+    const processNumber = searchParams.get('processNumber');
     const sectorId = searchParams.get('sectorId');
+    const status = searchParams.get('status');
 
     const tramitations = await prismadb.tramitation.findMany({
       where: {
         ...(protocolId && { protocolId }),
-        ...(resourceId && { resourceId }),
+        ...(processNumber && {
+          processNumber: {
+            equals: processNumber.trim(),
+            mode: 'insensitive',
+          }
+        }),
         ...(sectorId && { sectorId }),
+        ...(status && { status: status as any }),
       },
       include: {
         protocol: {
@@ -28,13 +35,7 @@ export async function GET(req: Request) {
             id: true,
             number: true,
             processNumber: true,
-          },
-        },
-        resource: {
-          select: {
-            id: true,
-            resourceNumber: true,
-            year: true,
+            presenter: true,
           },
         },
         sector: {
@@ -64,7 +65,34 @@ export async function GET(req: Request) {
       },
     });
 
-    return NextResponse.json(tramitations);
+    // Para cada tramitação, buscar o recurso associado pelo processNumber
+    const tramitationsWithResource = await Promise.all(
+      tramitations.map(async (tramitation) => {
+        // Normalizar o número do processo (remover espaços)
+        const normalizedProcessNumber = tramitation.processNumber.trim();
+
+        const resource = await prismadb.resource.findFirst({
+          where: {
+            processNumber: {
+              equals: normalizedProcessNumber,
+              mode: 'insensitive',
+            },
+          },
+          select: {
+            id: true,
+            processNumber: true,
+          },
+        });
+
+
+        return {
+          ...tramitation,
+          resource,
+        };
+      })
+    );
+
+    return NextResponse.json(tramitationsWithResource);
   } catch (error) {
     console.log('[TRAMITATIONS_GET]', error);
     return new NextResponse('Internal error', { status: 500 });
@@ -82,7 +110,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const {
       protocolId,
-      resourceId,
+      processNumber,
       purpose,
       sectorId,
       memberId,
@@ -91,19 +119,9 @@ export async function POST(req: Request) {
       observations,
     } = body;
 
-    // Deve ter protocolo OU recurso, mas não ambos
-    if (!protocolId && !resourceId) {
-      return new NextResponse(
-        'É necessário fornecer protocolId ou resourceId',
-        { status: 400 }
-      );
-    }
-
-    if (protocolId && resourceId) {
-      return new NextResponse(
-        'Não é possível tramitar protocolo e recurso ao mesmo tempo',
-        { status: 400 }
-      );
+    // Validar processNumber obrigatório
+    if (!processNumber) {
+      return new NextResponse('Número do processo é obrigatório', { status: 400 });
     }
 
     // Validar finalidade obrigatória
@@ -138,31 +156,27 @@ export async function POST(req: Request) {
       }
     }
 
-    // Validar se protocolo ou recurso existe
+    // Validar se protocolo existe (se fornecido)
     if (protocolId) {
       const protocol = await prismadb.protocol.findUnique({
         where: { id: protocolId },
+        select: { processNumber: true },
       });
 
       if (!protocol) {
         return new NextResponse('Protocolo não encontrado', { status: 404 });
       }
-    }
 
-    if (resourceId) {
-      const resource = await prismadb.resource.findUnique({
-        where: { id: resourceId },
-      });
-
-      if (!resource) {
-        return new NextResponse('Recurso não encontrado', { status: 404 });
+      // Verificar se o processNumber fornecido é do protocolo
+      if (protocol.processNumber !== processNumber) {
+        return new NextResponse('Número do processo não corresponde ao protocolo', { status: 400 });
       }
     }
 
     const tramitation = await prismadb.tramitation.create({
       data: {
         protocolId: protocolId || null,
-        resourceId: resourceId || null,
+        processNumber: processNumber.trim(),
         purpose,
         sectorId: sectorId || null,
         memberId: memberId || null,
@@ -177,13 +191,7 @@ export async function POST(req: Request) {
             id: true,
             number: true,
             processNumber: true,
-          },
-        },
-        resource: {
-          select: {
-            id: true,
-            resourceNumber: true,
-            year: true,
+            presenter: true,
           },
         },
         sector: {

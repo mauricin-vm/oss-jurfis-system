@@ -47,6 +47,7 @@ export function FileUpload({ onFileSelect, selectedFile, isProcessing = false }:
               accept=".pdf"
               onChange={handleFileChange}
               className="hidden"
+              autoComplete="off"
             />
 
             {selectedFile ? (

@@ -24,12 +24,25 @@ export async function GET(req: Request) {
       where: {
         ...(isActive !== null && { isActive: isActive === 'true' }),
       },
+      include: {
+        _count: {
+          select: {
+            authorities: true, // Vinculações com recursos
+          },
+        },
+      },
       orderBy: {
         name: 'asc',
       },
     });
 
-    return NextResponse.json(authorities);
+    // Adicionar flag isInUse para indicar se a autoridade está sendo usada
+    const authoritiesWithFlag = authorities.map(authority => ({
+      ...authority,
+      isInUse: authority._count.authorities > 0,
+    }));
+
+    return NextResponse.json(authoritiesWithFlag);
   } catch (error) {
     console.log('[AUTHORITIES_REGISTERED_GET]', error);
     return new NextResponse('Internal error', { status: 500 });

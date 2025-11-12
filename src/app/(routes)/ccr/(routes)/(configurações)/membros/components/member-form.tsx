@@ -115,12 +115,13 @@ export function MemberForm({ initialData }: MemberFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...data,
-          role: data.role || null,
+          name: data.name.trim(),
+          role: data.role ? data.role.trim() : null,
           cpf: data.cpf ? data.cpf.replace(/\D/g, '') : null,
-          registration: data.registration || null,
-          agency: data.agency || null,
+          registration: data.registration ? data.registration.trim() : null,
+          agency: data.agency ? data.agency.trim() : null,
           phone: data.phone ? data.phone.replace(/\D/g, '') : null,
-          email: data.email || null,
+          email: data.email ? data.email.trim() : null,
           gender: data.gender || null,
         }),
       });

@@ -367,8 +367,7 @@ model Tramitation {
   id            String   @id @default(uuid())
   protocolId    String?
   protocol      Protocol? @relation(fields: [protocolId], references: [id])
-  resourceId    String?
-  resource      Resource? @relation(fields: [resourceId], references: [id])
+  processNumber String   // Número do processo
 
   purpose       TramitationPurpose // SOLICITAR_PROCESSO, CONTRARRAZAO, JULGAMENTO, etc
 
@@ -396,6 +395,7 @@ model Tramitation {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@index([processNumber])
   @@index([deadline])
   @@index([status])
   @@index([sectorId])
@@ -461,7 +461,6 @@ model Resource {
   subjects          SubjectChildren[] // Assuntos do recurso (many-to-many com hierarquia)
   registrations     Registration[] // Inscrições e valores do recurso
   authorities       Authority[] // Autoridades vinculadas ao recurso
-  tramitations      Tramitation[]
   sessions          SessionResource[]
   distributions     SessionDistribution[]
   documents         Document[]
@@ -1102,6 +1101,7 @@ enum ContactType {
 enum TramitationPurpose {
   SOLICITAR_PROCESSO
   CONTRARRAZAO
+  PARECER_PGM
   JULGAMENTO
   DILIGENCIA
   OUTRO

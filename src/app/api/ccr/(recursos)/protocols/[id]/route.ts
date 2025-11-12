@@ -12,7 +12,6 @@ interface Contact {
 interface GroupedPart {
   name: string;
   role: string;
-  document: string | null;
   contacts: Contact[];
 }
 
@@ -200,7 +199,6 @@ export async function PUT(
           groupedParts[key] = {
             name: part.name,
             role: part.role,
-            document: part.document || null,
             contacts: [],
           };
         }
@@ -230,7 +228,6 @@ export async function PUT(
             data: {
               name: partData.name,
               role: partData.role as any,
-              document: partData.document,
               processNumber: currentProcessNumber,
               createdBy: session.user.id,
             },

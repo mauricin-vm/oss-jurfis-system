@@ -26,13 +26,7 @@ export async function GET(
             id: true,
             number: true,
             processNumber: true,
-          },
-        },
-        resource: {
-          select: {
-            id: true,
-            resourceNumber: true,
-            year: true,
+            presenter: true,
           },
         },
         sector: {
@@ -66,6 +60,78 @@ export async function GET(
     return NextResponse.json(tramitation);
   } catch (error) {
     console.log('[TRAMITATION_GET]', error);
+    return new NextResponse('Internal error', { status: 500 });
+  }
+}
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
+    const { id } = await params;
+    const body = await req.json();
+    const { status, returnDate, deadline, observations } = body;
+
+    // Verificar se tramitação existe
+    const existingTramitation = await prismadb.tramitation.findUnique({
+      where: { id },
+    });
+
+    if (!existingTramitation) {
+      return new NextResponse('Tramitação não encontrada', { status: 404 });
+    }
+
+    const tramitation = await prismadb.tramitation.update({
+      where: { id },
+      data: {
+        ...(status && { status }),
+        ...(returnDate !== undefined && { returnDate: returnDate ? new Date(returnDate) : null }),
+        ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
+        ...(observations !== undefined && { observations }),
+      },
+      include: {
+        protocol: {
+          select: {
+            id: true,
+            number: true,
+            processNumber: true,
+            presenter: true,
+          },
+        },
+        sector: {
+          select: {
+            id: true,
+            name: true,
+            abbreviation: true,
+          },
+        },
+        member: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+          },
+        },
+        createdByUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(tramitation);
+  } catch (error) {
+    console.log('[TRAMITATION_PATCH]', error);
     return new NextResponse('Internal error', { status: 500 });
   }
 }
@@ -145,13 +211,7 @@ export async function PUT(
             id: true,
             number: true,
             processNumber: true,
-          },
-        },
-        resource: {
-          select: {
-            id: true,
-            resourceNumber: true,
-            year: true,
+            presenter: true,
           },
         },
         sector: {
@@ -194,6 +254,11 @@ export async function DELETE(
 
     if (!session) {
       return new NextResponse('Unauthorized', { status: 401 });
+    }
+
+    // Verificar se o usuário é admin
+    if (session.user.role !== 'ADMIN') {
+      return new NextResponse('Forbidden', { status: 403 });
     }
 
     const { id } = await params;

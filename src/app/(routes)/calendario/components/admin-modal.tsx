@@ -239,6 +239,7 @@ export function AdminModal({ isOpen, meeting, onClose, onSave }: AdminModalProps
                 className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                 placeholder="Ex: Reunião de Planejamento"
                 disabled={isSubmitting}
+                autoComplete="off"
               />
             </div>
 
@@ -254,6 +255,7 @@ export function AdminModal({ isOpen, meeting, onClose, onSave }: AdminModalProps
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   disabled={isSubmitting}
+                  autoComplete="off"
                 />
               </div>
 
@@ -267,6 +269,7 @@ export function AdminModal({ isOpen, meeting, onClose, onSave }: AdminModalProps
                   onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                   className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   disabled={isSubmitting}
+                  autoComplete="off"
                 />
               </div>
 
@@ -280,6 +283,7 @@ export function AdminModal({ isOpen, meeting, onClose, onSave }: AdminModalProps
                   onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                   className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   disabled={isSubmitting}
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -296,6 +300,7 @@ export function AdminModal({ isOpen, meeting, onClose, onSave }: AdminModalProps
                 className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                 placeholder="Seu nome completo"
                 disabled={isSubmitting}
+                autoComplete="off"
               />
             </div>
 
@@ -312,6 +317,7 @@ export function AdminModal({ isOpen, meeting, onClose, onSave }: AdminModalProps
                   className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   placeholder="seu@email.com"
                   disabled={isSubmitting}
+                  autoComplete="off"
                 />
               </div>
 
@@ -327,6 +333,7 @@ export function AdminModal({ isOpen, meeting, onClose, onSave }: AdminModalProps
                   className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
                   placeholder="(67) 00000-0000"
                   disabled={isSubmitting}
+                  autoComplete="off"
                 />
               </div>
             </div>
