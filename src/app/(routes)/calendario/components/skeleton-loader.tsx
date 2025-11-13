@@ -38,35 +38,62 @@ export function SidebarSkeleton() {
 export function CalendarGridSkeleton() {
   return (
     <div className="bg-card border rounded-lg shadow-sm h-full flex flex-col overflow-hidden">
-      {/* Header com dias da semana */}
-      <div className="grid border-b bg-muted shrink-0" style={{ gridTemplateColumns: '80px 1fr 1fr 1fr 1fr' }}>
-        <div className="p-3 text-center border-r">
-          <Skeleton className="h-4 w-12 mx-auto" />
-        </div>
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className={`p-3 text-center ${i < 3 ? 'border-r' : ''}`}>
-            <Skeleton className="h-5 w-24 mx-auto mb-1" />
-            <Skeleton className="h-4 w-16 mx-auto" />
-          </div>
-        ))}
-      </div>
-
-      {/* Grid de horas */}
+      {/* Container com scroll */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        {Array.from({ length: 11 }).map((_, hour) => (
-          <div key={hour} className="grid border-b last:border-b-0" style={{ gridTemplateColumns: '80px 1fr 1fr 1fr 1fr' }}>
-            <div className="p-3 border-r bg-muted/30 text-center">
-              <Skeleton className="h-4 w-10 mx-auto" />
-            </div>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className={`min-h-[80px] relative bg-white ${i < 3 ? 'border-r' : ''}`}
-              >
-              </div>
-            ))}
+        {/* Header com dias da semana - sticky */}
+        <div className="sticky top-0 z-30 grid border-b bg-muted" style={{ gridTemplateColumns: '80px 1fr 1fr 1fr 1fr' }}>
+          <div className="p-3 text-center border-r">
+            <Skeleton className="h-4 w-14 mx-auto" />
           </div>
-        ))}
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className={`p-3 text-center ${i < 3 ? 'border-r' : ''}`}>
+              <Skeleton className="h-5 w-24 mx-auto" />
+            </div>
+          ))}
+        </div>
+
+        {/* Grid de horas */}
+        <div>
+          {Array.from({ length: 11 }).map((_, hour) => (
+            <div key={hour} className="grid border-b last:border-b-0" style={{ gridTemplateColumns: '80px 1fr 1fr 1fr 1fr' }}>
+              <div className="p-3 border-r bg-muted/30 text-center">
+                <Skeleton className="h-4 w-10 mx-auto" />
+              </div>
+              {Array.from({ length: 4 }).map((_, dayIndex) => (
+                <div
+                  key={dayIndex}
+                  className={`min-h-[80px] relative bg-white ${dayIndex < 3 ? 'border-r' : ''} p-2`}
+                >
+                  {/* Cards de reunião simulados */}
+                  {(hour === 2 && dayIndex === 1) && (
+                    <div className="space-y-1">
+                      <Skeleton className="h-3 w-32" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  )}
+                  {(hour === 4 && dayIndex === 0) && (
+                    <div className="space-y-1">
+                      <Skeleton className="h-3 w-28" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  )}
+                  {(hour === 5 && dayIndex === 2) && (
+                    <div className="space-y-1">
+                      <Skeleton className="h-3 w-36" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  )}
+                  {(hour === 7 && dayIndex === 3) && (
+                    <div className="space-y-1">
+                      <Skeleton className="h-3 w-30" />
+                      <Skeleton className="h-3 w-18" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

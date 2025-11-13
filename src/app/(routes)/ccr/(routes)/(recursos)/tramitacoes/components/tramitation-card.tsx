@@ -157,19 +157,19 @@ export function TramitationCard({ tramitation, onMarkAsReceived, onDelete, userR
             {tramitation.status === 'PENDENTE' ? (
               <>
                 {isOverdue ? (
-                  <Badge variant="secondary" className="bg-red-100 text-red-800 flex items-center gap-1.5">
+                  <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-100 flex items-center gap-1.5">
                     <AlertCircle className="h-3.5 w-3.5" />
                     Vencida
                   </Badge>
                 ) : (
-                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 flex items-center gap-1.5">
+                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" />
                     Pendente
                   </Badge>
                 )}
               </>
             ) : (
-              <Badge variant="secondary" className="bg-green-100 text-green-800 flex items-center gap-1.5">
+              <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100 flex items-center gap-1.5">
                 <CheckCircle className="h-3.5 w-3.5" />
                 Entregue
               </Badge>

@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
@@ -27,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { cn } from "@/lib/utils";
-import { MoreHorizontal, Pencil, Trash2, ChevronLeft, ChevronsLeft, ChevronRight, ChevronsRight, Plus, Filter, Search, CheckCircle, FileText, ExternalLink } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, ChevronLeft, ChevronsLeft, ChevronRight, ChevronsRight, Plus, Filter, Search, CheckCircle, FileText, ExternalLink, Clock, Archive } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -70,9 +71,15 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusStyles: Record<string, string> = {
-  PENDENTE: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  CONCLUIDO: 'bg-green-100 text-green-800 border-green-300',
-  ARQUIVADO: 'bg-gray-100 text-gray-800 border-gray-300',
+  PENDENTE: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
+  CONCLUIDO: 'bg-green-100 text-green-800 hover:bg-green-100',
+  ARQUIVADO: 'bg-gray-100 text-gray-800 hover:bg-gray-100',
+};
+
+const statusIcons: Record<string, React.ReactNode> = {
+  PENDENTE: <Clock className="h-3.5 w-3.5" />,
+  CONCLUIDO: <CheckCircle className="h-3.5 w-3.5" />,
+  ARQUIVADO: <Archive className="h-3.5 w-3.5" />,
 };
 
 export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRole }: ProtocolTableProps) {
@@ -366,12 +373,16 @@ export function ProtocolTable({ data, loading, onRefresh, onNewProtocol, userRol
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={cn(
-                          'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border',
-                          statusStyles[protocol.status] || 'bg-gray-100 text-gray-800 border-gray-300'
-                        )}>
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            'inline-flex items-center gap-1.5',
+                            statusStyles[protocol.status] || 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+                          )}
+                        >
+                          {statusIcons[protocol.status]}
                           {statusLabels[protocol.status] || protocol.status}
-                        </span>
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>

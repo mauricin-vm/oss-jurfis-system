@@ -256,7 +256,7 @@ export default function RecursoDetalhesPage() {
                     variant="outline"
                     size="sm"
                     className="cursor-pointer"
-                    onClick={() => router.push(`/ccr/recursos/${params.id}/intimacoes`)}
+                    onClick={() => router.push(`/ccr/recursos/${params.id}/publicacoes`)}
                   >
                     <Newspaper className="h-4 w-4" />
                   </Button>

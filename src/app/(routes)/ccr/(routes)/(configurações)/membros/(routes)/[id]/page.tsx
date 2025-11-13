@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { MemberForm } from '../../components/member-form';
 import { MemberFormSkeleton } from '../../components/member-form-skeleton';
 import { CCRPageWrapper } from '../../../../../components/ccr-page-wrapper';
@@ -79,8 +78,10 @@ export default function EditarMembroPage() {
       <CCRPageWrapper title="Editar Membro" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <Skeleton className="h-7 w-48" />
-            <Skeleton className="h-4 w-96 mt-1.5" />
+            <CardTitle>Editar Membro</CardTitle>
+            <CardDescription>
+              Atualize as informações do membro
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <MemberFormSkeleton />

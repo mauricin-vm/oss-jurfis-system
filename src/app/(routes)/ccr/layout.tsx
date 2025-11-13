@@ -20,6 +20,7 @@ import {
   Contact,
   Plus,
   Phone,
+  History,
 } from 'lucide-react';
 
 export default function CCRLayout({ children }: { children: React.ReactNode }) {
@@ -150,6 +151,14 @@ export default function CCRLayout({ children }: { children: React.ReactNode }) {
           onClick: () => router.push('/ccr/tramitacoes/nova'),
         });
       }
+      // Se estiver na página de listagem de sessões ou nova sessão, adicionar botão "Nova Sessão"
+      else if (pathname === '/ccr/sessoes' || pathname === '/ccr/sessoes/novo') {
+        customActions.push({
+          label: 'Nova Sessão',
+          icon: Plus,
+          onClick: () => router.push('/ccr/sessoes/novo'),
+        });
+      }
       // Se estiver na página de partes de um recurso
       else if (pathname?.match(/^\/ccr\/recursos\/[^/]+\/partes$/)) {
         const resourceId = pathname.split('/')[3];
@@ -166,6 +175,17 @@ export default function CCRLayout({ children }: { children: React.ReactNode }) {
           label: 'Gerenciar Partes',
           icon: Users,
           onClick: () => router.push(`/ccr/recursos/${resourceId}/partes`),
+        });
+      }
+      // Se estiver na página de membros de uma sessão
+      else if (pathname?.match(/^\/ccr\/sessoes\/[^/]+\/membros$/)) {
+        customActions.push({
+          label: 'Recuperar Última Sessão',
+          icon: History,
+          onClick: () => {
+            // Disparar evento customizado para o form carregar membros da última sessão
+            window.dispatchEvent(new Event('loadLastSessionMembers'));
+          },
         });
       }
 

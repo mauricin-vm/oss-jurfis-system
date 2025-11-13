@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ProtocolForm } from '../../components/protocol-form';
 import { ProtocolFormSkeleton } from '../../components/protocol-form-skeleton';
 import { CCRPageWrapper } from '../../../../../components/ccr-page-wrapper';
@@ -90,8 +89,10 @@ export default function EditarProtocoloPage() {
       <CCRPageWrapper title="Editar Protocolo" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <Skeleton className="h-7 w-48" />
-            <Skeleton className="h-4 w-96 mt-1.5" />
+            <CardTitle>Editar Protocolo</CardTitle>
+            <CardDescription>
+              Atualize as informações do protocolo.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ProtocolFormSkeleton />

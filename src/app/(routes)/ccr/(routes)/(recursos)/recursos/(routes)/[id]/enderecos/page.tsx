@@ -334,14 +334,83 @@ export default function EnderecosPage() {
       <CCRPageWrapper title="Gerenciar Endereços" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <Skeleton className="h-7 w-48" />
-            <Skeleton className="h-4 w-96 mt-1.5" />
+            <CardTitle>Endereços do Recurso</CardTitle>
+            <CardDescription>
+              Gerencie os endereços vinculados ao recurso.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {Array.from({ length: 2 }).map((_, i) => (
-                <Skeleton key={i} className="h-60 w-full" />
+                <div key={i} className="border rounded-lg">
+                  {/* Header do Card */}
+                  <div className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-5 w-5" />
+                        <Skeleton className="h-5 w-40" />
+                      </div>
+                      <Skeleton className="h-4 w-64" />
+                    </div>
+                    <div className="flex gap-2 items-center shrink-0">
+                      <Skeleton className="h-6 w-11" />
+                      <Skeleton className="h-10 w-10" />
+                    </div>
+                  </div>
+
+                  {/* Conteúdo Expandido */}
+                  <div className="p-4 space-y-4 border-t">
+                    {/* Linha 1: Tipo, CEP, Rua */}
+                    <div className="grid grid-cols-6 gap-4">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-28" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-12" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                      <div className="col-span-4 space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    </div>
+
+                    {/* Linha 2: Número, Complemento, Bairro, Cidade, Estado */}
+                    <div className="grid grid-cols-6 gap-4">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                      <div className="col-span-2 space-y-2">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ))}
+
+              {/* Botão Adicionar Endereço */}
+              <Skeleton className="h-10 w-full" />
+
+              {/* Botões de Ação */}
+              <div className="flex justify-end gap-4 pt-4">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-40" />
+              </div>
             </div>
           </CardContent>
         </Card>

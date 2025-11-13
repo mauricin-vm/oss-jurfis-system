@@ -27,19 +27,19 @@ model User {
   overtimeRecords     OvertimeRecord[]
 
   // CCR Module Relations
-  partsCreated        Part[]               @relation("PartCreatedBy")
-  contactsCreated     Contact[]            @relation("ContactCreatedBy")
-  protocolsCreated    Protocol[]           @relation("ProtocolEmployee")
-  tramitationsCreated Tramitation[]        @relation("TramitationCreatedBy")
-  sessionsCreated     Session[]            @relation("SessionCreatedBy")
-  minutesCreated      SessionMinutes[]     @relation("MinutesCreatedBy")
-  notificationsCreated Notification[]      @relation("NotificationCreatedBy")
-  documentsUploaded   Document[]           @relation("DocumentUploadedBy")
-  publicationsCreated Publication[]        @relation("PublicationCreatedBy")
-  historyCreated      ResourceHistory[]    @relation("HistoryCreatedBy")
+  partsCreated         Part[]            @relation("PartCreatedBy")
+  contactsCreated      Contact[]         @relation("ContactCreatedBy")
+  protocolsCreated     Protocol[]        @relation("ProtocolEmployee")
+  tramitationsCreated  Tramitation[]     @relation("TramitationCreatedBy")
+  sessionsCreated      Session[]         @relation("SessionCreatedBy")
+  minutesCreated       SessionMinutes[]  @relation("MinutesCreatedBy")
+  notificationsCreated Notification[]    @relation("NotificationCreatedBy")
+  documentsUploaded    Document[]        @relation("DocumentUploadedBy")
+  publicationsCreated  Publication[]     @relation("PublicationCreatedBy")
+  historyCreated       ResourceHistory[] @relation("HistoryCreatedBy")
 
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("User")
   @@schema("public")
@@ -151,26 +151,26 @@ model OvertimeRecord {
 // ============================================
 // Representa as partes envolvidas (requerente, patrono, representante, etc)
 model Part {
-  id            String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Informações da parte (pessoa única dentro de um processo)
-  name          String   // Nome completo da parte
+  name          String // Nome completo da parte
   role          PartRole // Papel no processo (REQUERENTE, PATRONO, etc)
-  processNumber String   // Número do processo ao qual esta parte pertence
+  processNumber String // Número do processo ao qual esta parte pertence
 
   // Campos específicos para PATRONO
-  registrationType String? // Tipo de registro (ex: OAB, CRC)
+  registrationType   String? // Tipo de registro (ex: OAB, CRC)
   registrationNumber String? // Número do registro
 
   // Relacionamentos
-  protocols   ProtocolPart[] // Protocolos que usam esta parte
-  contacts    Contact[]      // Contatos da parte (telefones/emails)
+  protocols ProtocolPart[] // Protocolos que usam esta parte
+  contacts  Contact[] // Contatos da parte (telefones/emails)
 
   // Auditoria
-  createdBy   String
-  createdByUser User @relation("PartCreatedBy", fields: [createdBy], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdBy     String
+  createdByUser User     @relation("PartCreatedBy", fields: [createdBy], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@unique([name, role, processNumber]) // Uma pessoa com mesmo nome e role é única dentro do processo
   @@index([name])
@@ -185,33 +185,33 @@ model Part {
 // ============================================
 // Contatos (telefones/emails) vinculados a uma parte e protocolo
 model Contact {
-  id            String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Vinculação obrigatória à parte
   partId String
-  part          Part @relation(fields: [partId], references: [id], onDelete: Restrict)
+  part   Part   @relation(fields: [partId], references: [id], onDelete: Restrict)
 
   // Vinculação ao protocolo que criou este contato
-  protocolId    String
-  protocol      Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  protocolId String
+  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
 
   // Número do processo (para consultas futuras)
   processNumber String
 
   // Informações do contato
-  type        ContactType // TELEFONE ou EMAIL
-  value       String   // Número do telefone ou endereço de email
+  type  ContactType // TELEFONE ou EMAIL
+  value String // Número do telefone ou endereço de email
 
   // Marcadores
-  isPrimary   Boolean  @default(false) // Contato principal da parte
-  isVerified  Boolean  @default(false) // Contato verificado
-  isActive    Boolean  @default(true)  // Contato ativo (soft delete)
+  isPrimary  Boolean @default(false) // Contato principal da parte
+  isVerified Boolean @default(false) // Contato verificado
+  isActive   Boolean @default(true) // Contato ativo (soft delete)
 
   // Auditoria
-  createdBy   String?
-  createdByUser User? @relation("ContactCreatedBy", fields: [createdBy], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdBy     String?
+  createdByUser User?    @relation("ContactCreatedBy", fields: [createdBy], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([partId])
   @@index([protocolId])
@@ -226,15 +226,15 @@ model Contact {
 // TABELA DE JUNÇÃO: PROTOCOL <-> PART
 // ============================================
 model ProtocolPart {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  protocolId  String
-  protocol    Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  protocolId String
+  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
 
-  partId      String
-  part        Part     @relation(fields: [partId], references: [id], onDelete: Cascade)
+  partId String
+  part   Part   @relation(fields: [partId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([protocolId, partId]) // Uma parte não pode ser adicionada duas vezes ao mesmo protocolo
   @@index([protocolId])
@@ -247,26 +247,26 @@ model ProtocolPart {
 // 1. MÓDULO DE PROTOCOLOS
 // ============================================
 model Protocol {
-  id            String   @id @default(uuid())
-  number        String   @unique // "XXX/MM-YYYY"
-  sequenceNumber Int     // XXX
-  month         Int      // MM (1-12)
-  year          Int      // YYYY
-  processNumber String   // Número do processo
-  presenter     String   // Apresentante
-  employeeId    String   // Quem fez o protocolo
-  employee      User     @relation("ProtocolEmployee", fields: [employeeId], references: [id])
-  status        ProtocolStatus @default(PENDENTE) // PENDENTE, CONCLUIDO, ARQUIVADO
-  archiveReason String?   @db.Text // Justificativa quando status = ARQUIVADO
+  id             String         @id @default(uuid())
+  number         String         @unique // "XXX/MM-YYYY"
+  sequenceNumber Int // XXX
+  month          Int // MM (1-12)
+  year           Int // YYYY
+  processNumber  String // Número do processo
+  presenter      String // Apresentante
+  employeeId     String // Quem fez o protocolo
+  employee       User           @relation("ProtocolEmployee", fields: [employeeId], references: [id])
+  status         ProtocolStatus @default(PENDENTE) // PENDENTE, CONCLUIDO, ARQUIVADO
+  archiveReason  String?        @db.Text // Justificativa quando status = ARQUIVADO
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relacionamentos
-  parts         ProtocolPart[] // Partes envolvidas no protocolo (N:N)
-  contacts      Contact[]      // Contatos criados neste protocolo
-  resource      Resource?      // Só existe se isAdmittedAsResource = true
-  tramitations  Tramitation[]
+  parts        ProtocolPart[] // Partes envolvidas no protocolo (N:N)
+  contacts     Contact[] // Contatos criados neste protocolo
+  resource     Resource? // Só existe se isAdmittedAsResource = true
+  tramitations Tramitation[]
 
   @@index([year, month, sequenceNumber])
   @@index([processNumber])
@@ -278,25 +278,25 @@ model Protocol {
 // TABELA DE SETORES
 // ============================================
 model Sector {
-  id            String   @id @default(uuid())
-  name          String   @unique // Nome completo do setor (ex: "Fiscalização", "Contencioso")
-  abbreviation  String?  @unique // Abreviação do setor (ex: "FISC", "CONT")
-  dispatchCode  String?  // Código identificador para despacho
-  description   String?  @db.Text
+  id           String  @id @default(uuid())
+  name         String  @unique // Nome completo do setor (ex: "Fiscalização", "Contencioso")
+  abbreviation String? @unique // Abreviação do setor (ex: "FISC", "CONT")
+  dispatchCode String? // Código identificador para despacho
+  description  String? @db.Text
 
   // Informações de contato
-  phone         String?
-  email         String?
-  address       String?  @db.Text
+  phone   String?
+  email   String?
+  address String? @db.Text
 
-  isActive      Boolean  @default(true)
+  isActive Boolean @default(true)
 
   // Relacionamentos
   tramitations  Tramitation[]
   notifications Notification[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([isActive])
   @@map("CCR_Sector")
@@ -307,32 +307,32 @@ model Sector {
 // TABELA DE MEMBROS (CONSELHEIROS)
 // ============================================
 model Member {
-  id            String   @id @default(uuid())
-  name          String   // Nome completo do membro
-  role          String?  // Cargo (ex: "Presidente", "Conselheiro Titular", etc)
-  cpf           String?  // CPF
-  registration  String?  // Matrícula
-  agency        String?  // Órgão
-  phone         String?
-  email         String?
-  gender        Gender?  // MASCULINO ou FEMININO
-  isActive      Boolean  @default(true)
+  id           String  @id @default(uuid())
+  name         String // Nome completo do membro
+  role         String? // Cargo (ex: "Presidente", "Conselheiro Titular", etc)
+  cpf          String? // CPF
+  registration String? // Matrícula
+  agency       String? // Órgão
+  phone        String?
+  email        String?
+  gender       Gender? // MASCULINO ou FEMININO
+  isActive     Boolean @default(true)
 
   // Relacionamentos
-  tramitations                  Tramitation[]
-  sessionsAsPresident           Session[] @relation("SessionPresident")
-  sessionsPresent               SessionMember[] @relation("SessionMembersPresent")
-  sessionResourcesAsPresident   SessionResource[] @relation("SessionResourcePresident")
-  distributions                 SessionDistribution[] @relation("SessionDistributions")
-  votes                         SessionMemberVote[] @relation("MemberVotes")
-  votesFollowed                 SessionMemberVote[] @relation("FollowedMembers")
-  sessionVotingResultsWon       SessionVotingResult[] @relation("VotingResultWinners")
-  minutesAsPresident            SessionMinutes[] @relation("MinutesPresident")
-  minutesPresent                SessionMinutesMember[] @relation("MinutesMembersPresent")
-  minutesAbsences               SessionMinutesAbsence[] @relation("MinutesAbsences")
+  tramitations                Tramitation[]
+  sessionsAsPresident         Session[]               @relation("SessionPresident")
+  sessionsPresent             SessionMember[]         @relation("SessionMembersPresent")
+  sessionResourcesAsPresident SessionResource[]       @relation("SessionResourcePresident")
+  distributions               SessionDistribution[]   @relation("SessionDistributions")
+  votes                       SessionMemberVote[]     @relation("MemberVotes")
+  votesFollowed               SessionMemberVote[]     @relation("FollowedMembers")
+  sessionVotingResultsWon     SessionVotingResult[]   @relation("VotingResultWinners")
+  minutesAsPresident          SessionMinutes[]        @relation("MinutesPresident")
+  minutesPresent              SessionMinutesMember[]  @relation("MinutesMembersPresent")
+  minutesAbsences             SessionMinutesAbsence[] @relation("MinutesAbsences")
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([isActive])
   @@map("CCR_Member")
@@ -343,17 +343,17 @@ model Member {
 // TABELA DE AUTORIDADES CADASTRADAS
 // ============================================
 model AuthorityRegistered {
-  id            String   @id @default(uuid())
-  name          String   // Nome completo da autoridade
-  phone         String?  // Telefone
-  email         String?  // Email
-  isActive      Boolean  @default(true)
+  id       String  @id @default(uuid())
+  name     String // Nome completo da autoridade
+  phone    String? // Telefone
+  email    String? // Email
+  isActive Boolean @default(true)
 
   // Relacionamentos
-  authorities   Authority[] // Autoridades vinculadas aos recursos
+  authorities Authority[] // Autoridades vinculadas aos recursos
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([isActive])
   @@index([name])
@@ -365,34 +365,34 @@ model AuthorityRegistered {
 // 2. MÓDULO DE TRAMITAÇÕES
 // ============================================
 model Tramitation {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   protocolId    String?
   protocol      Protocol? @relation(fields: [protocolId], references: [id])
-  processNumber String   // Número do processo
+  processNumber String // Número do processo
 
-  purpose       TramitationPurpose // SOLICITAR_PROCESSO, CONTRARRAZAO, JULGAMENTO, etc
+  purpose TramitationPurpose // SOLICITAR_PROCESSO, CONTRARRAZAO, JULGAMENTO, etc
 
   // Destino da tramitação (3 opções, pelo menos uma obrigatória):
 
   // Opção 1: Setor (FK para tabela Sector)
-  sectorId      String?
-  sector        Sector? @relation(fields: [sectorId], references: [id])
+  sectorId String?
+  sector   Sector? @relation(fields: [sectorId], references: [id])
 
   // Opção 2: Membro/Conselheiro (FK para tabela Member)
-  memberId      String?
-  member        Member? @relation(fields: [memberId], references: [id])
+  memberId String?
+  member   Member? @relation(fields: [memberId], references: [id])
 
   // Opção 3: Destino (texto livre)
-  destination   String? // Para quando não é setor nem membro específico
+  destination String? // Para quando não é setor nem membro específico
 
-  requestDate   DateTime @default(now())
-  deadline      DateTime? // Prazo limite
-  returnDate    DateTime? // Data de retorno (quando voltar)
-  status        TramitationStatus @default(PENDENTE)
-  observations  String?  @db.Text
+  requestDate  DateTime          @default(now())
+  deadline     DateTime? // Prazo limite
+  returnDate   DateTime? // Data de retorno (quando voltar)
+  status       TramitationStatus @default(PENDENTE)
+  observations String?           @db.Text
 
   createdBy     String
-  createdByUser User @relation("TramitationCreatedBy", fields: [createdBy], references: [id])
+  createdByUser User     @relation("TramitationCreatedBy", fields: [createdBy], references: [id])
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -409,21 +409,21 @@ model Tramitation {
 // TABELA DE ASSUNTOS (PADRÕES COM HIERARQUIA)
 // ============================================
 model Subject {
-  id            String   @id @default(uuid())
-  name          String   // Nome do assunto (ex: "Isenção de IPTU", "Possui renda superior a 2 salários mínimos")
-  description   String?  @db.Text
-  isActive      Boolean  @default(true)
+  id          String  @id @default(uuid())
+  name        String // Nome do assunto (ex: "Isenção de IPTU", "Possui renda superior a 2 salários mínimos")
+  description String? @db.Text
+  isActive    Boolean @default(true)
 
   // Hierarquia: Assunto principal → Subitens (motivos)
-  parentId      String?  // Null = assunto principal, preenchido = subitem
-  parent        Subject?  @relation("SubjectHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children      Subject[] @relation("SubjectHierarchy")
+  parentId String? // Null = assunto principal, preenchido = subitem
+  parent   Subject?  @relation("SubjectHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children Subject[] @relation("SubjectHierarchy")
 
   // Relacionamentos com recursos
   resourceLinks SubjectChildren[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([isActive])
   @@index([parentId])
@@ -436,16 +436,16 @@ model Subject {
 // ============================================
 // Recurso só é criado quando o protocolo é admitido como recurso
 model Resource {
-  id                String   @id @default(uuid())
-  resourceNumber    String   @unique // "XXXX/YYYY"
-  sequenceNumber    Int      // XXXX
-  year              Int      // YYYY
+  id             String @id @default(uuid())
+  resourceNumber String @unique // "XXXX/YYYY"
+  sequenceNumber Int // XXXX
+  year           Int // YYYY
 
-  protocolId        String   @unique
-  protocol          Protocol @relation(fields: [protocolId], references: [id])
+  protocolId String   @unique
+  protocol   Protocol @relation(fields: [protocolId], references: [id])
 
-  status            ResourceStatus @default(EM_ANALISE)
-  type              ResourceType // VOLUNTARIO ou OFICIO
+  status ResourceStatus @default(EM_ANALISE)
+  type   ResourceType // VOLUNTARIO ou OFICIO
 
   // Informações do processo
   processNumber     String
@@ -453,25 +453,25 @@ model Resource {
   attachedProcesses String[] @default([]) // Processos apensos
 
   // Informações do acórdão (gerado após julgamento)
-  decisionNumber         String?  @unique // "XXXX/YYYY"
-  decisionSequenceNumber Int?     // XXXX
-  decisionYear           Int?     // YYYY
+  decisionNumber         String? @unique // "XXXX/YYYY"
+  decisionSequenceNumber Int? // XXXX
+  decisionYear           Int? // YYYY
 
   // Relacionamentos
   // Partes são acessadas via processNumber: Part.findMany({ where: { processNumber } })
-  subjects          SubjectChildren[] // Assuntos do recurso (many-to-many com hierarquia)
-  registrations     Registration[] // Inscrições e valores do recurso
-  authorities       Authority[] // Autoridades vinculadas ao recurso
-  addresses         Address[] // Endereços vinculados ao recurso
-  sessions          SessionResource[]
-  distributions     SessionDistribution[]
-  documents         Document[]
-  publications      Publication[]
-  history           ResourceHistory[]
-  notifications     Notification[]
+  subjects      SubjectChildren[] // Assuntos do recurso (many-to-many com hierarquia)
+  registrations Registration[] // Inscrições e valores do recurso
+  authorities   Authority[] // Autoridades vinculadas ao recurso
+  addresses     Address[] // Endereços vinculados ao recurso
+  sessions      SessionResource[]
+  distributions SessionDistribution[]
+  documents     Document[]
+  publications  Publication[]
+  history       ResourceHistory[]
+  notifications Notification[]
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([year, sequenceNumber])
   @@index([decisionYear, decisionSequenceNumber])
@@ -485,16 +485,16 @@ model Resource {
 // TABELA DE RELACIONAMENTO: RECURSO <-> ASSUNTO (Many-to-Many com Hierarquia)
 // ============================================
 model SubjectChildren {
-  id                String   @id @default(uuid())
-  resourceId        String
-  resource          Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  subjectId         String
-  subject           Subject @relation(fields: [subjectId], references: [id])
+  id         String   @id @default(uuid())
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  subjectId  String
+  subject    Subject  @relation(fields: [subjectId], references: [id])
 
   // Marcador de assunto principal
-  isPrimary         Boolean  @default(false) // True = assunto principal do recurso, False = subitem/motivo
+  isPrimary Boolean @default(false) // True = assunto principal do recurso, False = subitem/motivo
 
-  createdAt         DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([resourceId, subjectId])
   @@index([resourceId])
@@ -508,27 +508,27 @@ model SubjectChildren {
 // TABELA DE INSCRIÇÕES
 // ============================================
 model Registration {
-  id                String   @id @default(uuid())
-  resourceId        String
-  resource          Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
-  type              RegistrationType // IMOBILIARIA, ECONOMICA, CPF, CNPJ
-  registrationNumber String   // Número da inscrição
+  type               RegistrationType // IMOBILIARIA, ECONOMICA, CPF, CNPJ
+  registrationNumber String // Número da inscrição
 
   // Endereço da inscrição
-  cep               String?
-  street            String?  // Rua
-  number            String?  // Número
-  complement        String?  // Complemento
-  neighborhood      String?  // Bairro
-  city              String?  // Cidade
-  state             String?  // Estado (UF)
+  cep          String?
+  street       String? // Rua
+  number       String? // Número
+  complement   String? // Complemento
+  neighborhood String? // Bairro
+  city         String? // Cidade
+  state        String? // Estado (UF)
 
   // Relacionamentos
-  values            RegistrationValue[]
+  values RegistrationValue[]
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([resourceId])
   @@map("CCR_Registration")
@@ -539,16 +539,16 @@ model Registration {
 // TABELA DE VALORES DAS INSCRIÇÕES
 // ============================================
 model RegistrationValue {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   registrationId String
   registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
 
-  description    String?  // Descrição do valor (ex: "Principal", "Multa", "Juros")
-  amount         Decimal  @db.Decimal(15, 2)
-  dueDate        DateTime? // Data de vencimento
+  description String? // Descrição do valor (ex: "Principal", "Multa", "Juros")
+  amount      Decimal   @db.Decimal(15, 2)
+  dueDate     DateTime? // Data de vencimento
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([registrationId])
   @@map("CCR_RegistrationValue")
@@ -559,17 +559,17 @@ model RegistrationValue {
 // AUTORIDADES VINCULADAS AO RECURSO
 // ============================================
 model Authority {
-  id                     String   @id @default(uuid())
-  resourceId             String
-  resource               Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
-  type                   AuthorityType // Tipo de autoridade
+  type AuthorityType // Tipo de autoridade
 
-  authorityRegisteredId  String
-  authorityRegistered    AuthorityRegistered @relation(fields: [authorityRegisteredId], references: [id], onDelete: Restrict)
+  authorityRegisteredId String
+  authorityRegistered   AuthorityRegistered @relation(fields: [authorityRegisteredId], references: [id], onDelete: Restrict)
 
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([resourceId])
   @@index([type])
@@ -582,33 +582,35 @@ model Authority {
 // 4. MÓDULO DE SESSÕES
 // ============================================
 model Session {
-  id             String   @id @default(uuid())
-  sessionNumber  String   @unique // "XXXX/YYYY"
-  sequenceNumber Int      // XXXX
-  year           Int      // YYYY
-  ordinalNumber  Int      // Número sequencial contínuo por tipo (não reseta anualmente)
+  id             String @id @default(uuid())
+  sessionNumber  String @unique // "XXXX/YYYY"
+  sequenceNumber Int // XXXX
+  year           Int // YYYY
+  ordinalNumber  Int // Número sequencial contínuo por tipo (não reseta anualmente)
 
-  date           DateTime
-  startTime      String?  // Formato: "14:00"
-  endTime        String?  // Formato: "17:00"
-  type           SessionType // ORDINARIA, EXTRAORDINARIA
-  status         SessionStatus @default(PENDENTE)
+  date      DateTime
+  startTime String? // Formato: "14:00"
+  endTime   String? // Formato: "17:00"
+  type      SessionType // ORDINARIA, EXTRAORDINARIA
+  status    SessionStatus @default(PUBLICACAO)
 
   // Presidente da sessão (membro conselheiro)
-  presidentId    String?
-  president      Member? @relation("SessionPresident", fields: [presidentId], references: [id])
+  presidentId String?
+  president   Member? @relation("SessionPresident", fields: [presidentId], references: [id])
 
-  observations   String?  @db.Text
+  observations            String? @db.Text
+  administrativeMatters   String? @db.Text
 
-  resources      SessionResource[]
-  members        SessionMember[] // Membros presentes na sessão
-  distributions  SessionDistribution[] @relation("DistributionsSessions")
-  minutes        SessionMinutes? // Ata da sessão (gerada após a sessão)
+  resources     SessionResource[]
+  members       SessionMember[] // Membros presentes na sessão
+  distributions SessionDistribution[] @relation("DistributionsSessions")
+  minutes       SessionMinutes? // Ata da sessão (gerada após a sessão)
+  publications  Publication[] // Publicações da pauta (type=SESSAO) e outros documentos
 
-  createdBy      String
-  createdByUser  User @relation("SessionCreatedBy", fields: [createdBy], references: [id])
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdBy     String
+  createdByUser User     @relation("SessionCreatedBy", fields: [createdBy], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([date])
   @@index([status])
@@ -623,27 +625,27 @@ model Session {
 // RECURSO EM PAUTA DA SESSÃO
 // ============================================
 model SessionResource {
-  id            String   @id @default(uuid())
-  resourceId    String
-  resource      Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  sessionId     String
-  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  sessionId  String
+  session    Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-  order         Int      // Ordem na pauta
-  status        SessionResourceStatus // EM_PAUTA, SUSPENSO, DILIGENCIA, PEDIDO_VISTA, JULGADO
+  order  Int // Ordem na pauta
+  status SessionResourceStatus // EM_PAUTA, SUSPENSO, DILIGENCIA, PEDIDO_VISTA, JULGADO
 
   // Presidente específico para este julgamento (opcional)
   specificPresidentId String?
   specificPresident   Member? @relation("SessionResourcePresident", fields: [specificPresidentId], references: [id])
 
-  observations  String?  @db.Text
+  observations String? @db.Text
 
   // Relacionamentos
   judgment             SessionJudgment?
   sessionVotingResults SessionVotingResult[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([resourceId, sessionId])
   @@index([sessionId])
@@ -657,36 +659,36 @@ model SessionResource {
 // RESULTADO DE CADA VOTAÇÃO (PRELIMINAR OU MÉRITO)
 // ============================================
 model SessionVotingResult {
-  id                    String   @id @default(uuid())
-  sessionResourceId     String
-  sessionResource       SessionResource @relation(fields: [sessionResourceId], references: [id], onDelete: Cascade)
+  id                String          @id @default(uuid())
+  sessionResourceId String
+  sessionResource   SessionResource @relation(fields: [sessionResourceId], references: [id], onDelete: Cascade)
 
-  type                  VotingType // PRELIMINAR ou MERITO
+  type VotingType // PRELIMINAR ou MERITO
 
   // Decisão desta votação
-  decisionId            String
-  decision              SessionVoteDecision @relation("VotingResultDecisions", fields: [decisionId], references: [id])
+  decisionId String
+  decision   SessionVoteDecision @relation("VotingResultDecisions", fields: [decisionId], references: [id])
 
   // Membro cujo voto venceu NESTA votação
-  winningMemberId       String
-  winningMember         Member @relation("VotingResultWinners", fields: [winningMemberId], references: [id])
+  winningMemberId String
+  winningMember   Member @relation("VotingResultWinners", fields: [winningMemberId], references: [id])
 
   // Resumo dos votos (calculado)
-  totalVotes            Int
-  votesInFavor          Int
-  votesAgainst          Int
-  abstentions           Int
-  qualityVoteUsed       Boolean  @default(false)
+  totalVotes      Int
+  votesInFavor    Int
+  votesAgainst    Int
+  abstentions     Int
+  qualityVoteUsed Boolean @default(false)
 
-  justification         String?  @db.Text
-  officeComplement      String?  @db.Text
+  justification    String? @db.Text
+  officeComplement String? @db.Text
 
   // Relacionamentos inversos
-  judgmentAsWinner SessionJudgment[] @relation("WinningVotingResult")
+  judgmentAsWinner SessionJudgment[]   @relation("WinningVotingResult")
   memberVotes      SessionMemberVote[]
 
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([sessionResourceId])
   @@index([type])
@@ -700,27 +702,27 @@ model SessionVotingResult {
 // DISTRIBUIÇÃO DO RECURSO (RELATOR/REVISORES)
 // ============================================
 model SessionDistribution {
-  id                String   @id @default(uuid())
-  resourceId        String
-  resource          Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
-  type              DistributionType // RELATOR, REVISOR
-  memberId          String
-  member            Member @relation("SessionDistributions", fields: [memberId], references: [id])
+  type     DistributionType // RELATOR, REVISOR
+  memberId String
+  member   Member           @relation("SessionDistributions", fields: [memberId], references: [id])
 
   // Informações da distribuição
   sessionId         String
-  session           Session  @relation("DistributionsSessions", fields: [sessionId], references: [id])
+  session           Session @relation("DistributionsSessions", fields: [sessionId], references: [id])
   distributionOrder Int
-  reason            String?  @db.Text
+  reason            String? @db.Text
 
-  isActive          Boolean  @default(true)
+  isActive Boolean @default(true)
 
   // Relacionamento com atas
   minutesDistributions SessionMinutesDistribution[] @relation("MinutesDistributions")
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([resourceId])
   @@index([memberId])
@@ -734,17 +736,17 @@ model SessionDistribution {
 // JULGAMENTO FINAL CONSOLIDADO
 // ============================================
 model SessionJudgment {
-  id                        String   @id @default(uuid())
-  sessionResourceId         String   @unique
-  sessionResource           SessionResource @relation(fields: [sessionResourceId], references: [id], onDelete: Cascade)
+  id                String          @id @default(uuid())
+  sessionResourceId String          @unique
+  sessionResource   SessionResource @relation(fields: [sessionResourceId], references: [id], onDelete: Cascade)
 
-  winningVotingResultId     String
-  winningVotingResult       SessionVotingResult @relation("WinningVotingResult", fields: [winningVotingResultId], references: [id])
+  winningVotingResultId String
+  winningVotingResult   SessionVotingResult @relation("WinningVotingResult", fields: [winningVotingResultId], references: [id])
 
-  observations              String?  @db.Text
+  observations String? @db.Text
 
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([sessionResourceId])
   @@index([winningVotingResultId])
@@ -756,31 +758,31 @@ model SessionJudgment {
 // VOTOS DOS MEMBROS NA SESSÃO
 // ============================================
 model SessionMemberVote {
-  id                    String   @id @default(uuid())
+  id String @id @default(uuid())
 
   sessionVotingResultId String
   sessionVotingResult   SessionVotingResult @relation(fields: [sessionVotingResultId], references: [id], onDelete: Cascade)
 
-  memberId              String
-  member                Member @relation("MemberVotes", fields: [memberId], references: [id])
+  memberId String
+  member   Member @relation("MemberVotes", fields: [memberId], references: [id])
 
-  voteType              VoteType
-  participationStatus   ParticipationStatus
+  voteType            VoteType
+  participationStatus ParticipationStatus
 
-  votePosition          VotePosition?
-  followsMemberId       String?
-  followsMember         Member? @relation("FollowedMembers", fields: [followsMemberId], references: [id])
+  votePosition    VotePosition?
+  followsMemberId String?
+  followsMember   Member?       @relation("FollowedMembers", fields: [followsMemberId], references: [id])
 
-  isQualityVote         Boolean  @default(false)
+  isQualityVote Boolean @default(false)
 
-  voteDecisionId        String?
-  voteDecision          SessionVoteDecision? @relation("MemberVoteDecisions", fields: [voteDecisionId], references: [id])
+  voteDecisionId String?
+  voteDecision   SessionVoteDecision? @relation("MemberVoteDecisions", fields: [voteDecisionId], references: [id])
 
-  justification         String?  @db.Text
-  observations          String?  @db.Text
+  justification String? @db.Text
+  observations  String? @db.Text
 
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([sessionVotingResultId, memberId])
   @@index([sessionVotingResultId])
@@ -795,11 +797,11 @@ model SessionMemberVote {
 // MEMBROS PRESENTES NA SESSÃO
 // ============================================
 model SessionMember {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   sessionId String
-  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   memberId  String
-  member    Member   @relation("SessionMembersPresent", fields: [memberId], references: [id])
+  member    Member  @relation("SessionMembersPresent", fields: [memberId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -814,33 +816,33 @@ model SessionMember {
 // ATAS (MINUTES)
 // ============================================
 model SessionMinutes {
-  id                    String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  sessionId             String?  @unique
-  session               Session? @relation(fields: [sessionId], references: [id])
+  sessionId String?  @unique
+  session   Session? @relation(fields: [sessionId], references: [id])
 
-  minutesNumber         String   @unique
-  sequenceNumber        Int
-  year                  Int
+  minutesNumber  String @unique
+  sequenceNumber Int
+  year           Int
 
-  ordinalNumber         Int
-  ordinalType           SessionType
+  ordinalNumber Int
+  ordinalType   SessionType
 
-  presidentId           String?
-  president             Member? @relation("MinutesPresident", fields: [presidentId], references: [id])
+  presidentId String?
+  president   Member? @relation("MinutesPresident", fields: [presidentId], references: [id])
 
-  endTime               String
+  endTime String
 
-  administrativeMatters String?  @db.Text
+  administrativeMatters String? @db.Text
 
-  distributions         SessionMinutesDistribution[]
-  presentMembers        SessionMinutesMember[]
-  absentMembers         SessionMinutesAbsence[]
+  distributions  SessionMinutesDistribution[]
+  presentMembers SessionMinutesMember[]
+  absentMembers  SessionMinutesAbsence[]
 
-  createdBy             String
-  createdByUser         User @relation("MinutesCreatedBy", fields: [createdBy], references: [id])
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdBy     String
+  createdByUser User     @relation("MinutesCreatedBy", fields: [createdBy], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([year, sequenceNumber])
   @@index([ordinalType, ordinalNumber])
@@ -854,18 +856,18 @@ model SessionMinutes {
 // DECISÕES PADRONIZADAS (VOTOS)
 // ============================================
 model SessionVoteDecision {
-  id          String   @id @default(uuid())
+  id          String       @id @default(uuid())
   type        DecisionType
   code        String
   name        String
-  description String?  @db.Text
-  isActive    Boolean  @default(true)
+  description String?      @db.Text
+  isActive    Boolean      @default(true)
 
   sessionVotingResults SessionVotingResult[] @relation("VotingResultDecisions")
-  memberVoteDecisions  SessionMemberVote[] @relation("MemberVoteDecisions")
+  memberVoteDecisions  SessionMemberVote[]   @relation("MemberVoteDecisions")
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([type, code])
   @@index([type])
@@ -878,13 +880,13 @@ model SessionVoteDecision {
 // RECURSOS DISTRIBUÍDOS NA ATA
 // ============================================
 model SessionMinutesDistribution {
-  id              String   @id @default(uuid())
-  minutesId       String
-  minutes         SessionMinutes @relation(fields: [minutesId], references: [id], onDelete: Cascade)
-  distributionId  String
-  distribution    SessionDistribution @relation("MinutesDistributions", fields: [distributionId], references: [id])
+  id             String              @id @default(uuid())
+  minutesId      String
+  minutes        SessionMinutes      @relation(fields: [minutesId], references: [id], onDelete: Cascade)
+  distributionId String
+  distribution   SessionDistribution @relation("MinutesDistributions", fields: [distributionId], references: [id])
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([minutesId, distributionId])
   @@index([minutesId])
@@ -897,11 +899,11 @@ model SessionMinutesDistribution {
 // MEMBROS PRESENTES NA ATA
 // ============================================
 model SessionMinutesMember {
-  id        String   @id @default(uuid())
+  id        String         @id @default(uuid())
   minutesId String
   minutes   SessionMinutes @relation(fields: [minutesId], references: [id], onDelete: Cascade)
   memberId  String
-  member    Member @relation("MinutesMembersPresent", fields: [memberId], references: [id])
+  member    Member         @relation("MinutesMembersPresent", fields: [memberId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -916,16 +918,16 @@ model SessionMinutesMember {
 // MEMBROS AUSENTES NA ATA
 // ============================================
 model SessionMinutesAbsence {
-  id            String   @id @default(uuid())
-  minutesId     String
-  minutes       SessionMinutes @relation(fields: [minutesId], references: [id], onDelete: Cascade)
-  memberId      String
-  member        Member @relation("MinutesAbsences", fields: [memberId], references: [id])
+  id        String         @id @default(uuid())
+  minutesId String
+  minutes   SessionMinutes @relation(fields: [minutesId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member         @relation("MinutesAbsences", fields: [memberId], references: [id])
 
-  isJustified   Boolean  @default(false)
-  justification String?  @db.Text
+  isJustified   Boolean @default(false)
+  justification String? @db.Text
 
-  createdAt     DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([minutesId, memberId])
   @@index([minutesId])
@@ -939,27 +941,27 @@ model SessionMinutesAbsence {
 // 5. MÓDULO DE NOTIFICAÇÕES
 // ============================================
 model Notification {
-  id            String   @id @default(uuid())
-  resourceId    String?
-  resource      Resource? @relation(fields: [resourceId], references: [id])
+  id         String    @id @default(uuid())
+  resourceId String?
+  resource   Resource? @relation(fields: [resourceId], references: [id])
 
-  type          NotificationType
+  type NotificationType
 
-  sectorId      String?
-  sector        Sector? @relation(fields: [sectorId], references: [id])
+  sectorId String?
+  sector   Sector? @relation(fields: [sectorId], references: [id])
 
-  destination   String?
+  destination String?
 
-  subject       String
-  message       String   @db.Text
+  subject String
+  message String @db.Text
 
-  scheduledFor  DateTime?
-  status        NotificationStatus @default(PENDENTE)
+  scheduledFor DateTime?
+  status       NotificationStatus @default(PENDENTE)
 
-  contacts      NotificationContact[]
+  contacts NotificationContact[]
 
   createdBy     String
-  createdByUser User @relation("NotificationCreatedBy", fields: [createdBy], references: [id])
+  createdByUser User     @relation("NotificationCreatedBy", fields: [createdBy], references: [id])
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -975,28 +977,28 @@ model Notification {
 // CONTATOS/CANAIS DE NOTIFICAÇÃO
 // ============================================
 model NotificationContact {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   notificationId String
   notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
-  channel        NotificationChannel
-  contact        String?
+  channel NotificationChannel
+  contact String?
 
-  attemptCount   Int      @default(0)
-  lastAttemptAt  DateTime?
+  attemptCount  Int       @default(0)
+  lastAttemptAt DateTime?
 
-  status         NotificationContactStatus @default(PENDENTE)
-  sentAt         DateTime?
-  deliveredAt    DateTime?
-  confirmedAt    DateTime?
+  status      NotificationContactStatus @default(PENDENTE)
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  confirmedAt DateTime?
 
-  error          String?  @db.Text
-  observations   String?  @db.Text
+  error        String? @db.Text
+  observations String? @db.Text
 
-  metadata       Json?
+  metadata Json?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([notificationId])
   @@index([channel])
@@ -1009,22 +1011,22 @@ model NotificationContact {
 // DOCUMENTOS
 // ============================================
 model Document {
-  id            String   @id @default(uuid())
-  resourceId    String
-  resource      Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
-  type          DocumentType
-  title         String
-  description   String?  @db.Text
-  fileName      String
+  type           DocumentType
+  title          String
+  description    String?      @db.Text
+  fileName       String
   storedFileName String
-  filePath      String
-  fileSize      Int
-  mimeType      String
+  filePath       String
+  fileSize       Int
+  mimeType       String
 
-  uploadedBy    String
-  uploadedByUser User @relation("DocumentUploadedBy", fields: [uploadedBy], references: [id])
-  uploadedAt    DateTime @default(now())
+  uploadedBy     String
+  uploadedByUser User     @relation("DocumentUploadedBy", fields: [uploadedBy], references: [id])
+  uploadedAt     DateTime @default(now())
 
   @@index([resourceId])
   @@index([type])
@@ -1036,22 +1038,24 @@ model Document {
 // PUBLICAÇÕES
 // ============================================
 model Publication {
-  id                 String   @id @default(uuid())
-  resourceId         String
-  resource           Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  id String @id @default(uuid())
 
-  type               PublicationType
-  publicationNumber  String
-  publicationDate    DateTime
+  type              PublicationType
+  publicationNumber String
+  publicationDate   DateTime
 
-  observations       String?  @db.Text
+  resourceId String?
+  resource   Resource? @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  sessionId  String?
+  session    Session?  @relation(fields: [sessionId], references: [id])
 
-  createdBy          String
-  createdByUser      User @relation("PublicationCreatedBy", fields: [createdBy], references: [id])
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdBy     String
+  createdByUser User     @relation("PublicationCreatedBy", fields: [createdBy], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([resourceId])
+  @@index([sessionId])
   @@index([type])
   @@index([publicationDate])
   @@map("CCR_Publication")
@@ -1062,17 +1066,17 @@ model Publication {
 // HISTÓRICO
 // ============================================
 model ResourceHistory {
-  id            String   @id @default(uuid())
-  resourceId    String
-  resource      Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
-  action        HistoryAction
-  description   String   @db.Text
-  metadata      Json?
-  isManual      Boolean  @default(false)
+  action      HistoryAction
+  description String        @db.Text
+  metadata    Json?
+  isManual    Boolean       @default(false)
 
   createdBy     String
-  createdByUser User @relation("HistoryCreatedBy", fields: [createdBy], references: [id])
+  createdByUser User     @relation("HistoryCreatedBy", fields: [createdBy], references: [id])
   createdAt     DateTime @default(now())
 
   @@index([resourceId])
@@ -1086,24 +1090,24 @@ model ResourceHistory {
 // ENDEREÇOS
 // ============================================
 model Address {
-  id            String   @id @default(uuid())
-  resourceId    String
-  resource      Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
-  type          AddressType
-  cep           String?
-  street        String   // Rua/Logradouro
-  number        String?  // Número
-  complement    String?  // Complemento
-  neighborhood  String?  // Bairro
-  city          String   // Cidade
-  state         String   // Estado (UF)
+  type         AddressType
+  cep          String?
+  street       String // Rua/Logradouro
+  number       String? // Número
+  complement   String? // Complemento
+  neighborhood String? // Bairro
+  city         String // Cidade
+  state        String // Estado (UF)
 
-  isPrimary     Boolean  @default(false)
-  isActive      Boolean  @default(true)  // Endereço ativo (soft delete)
+  isPrimary Boolean @default(false)
+  isActive  Boolean @default(true) // Endereço ativo (soft delete)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([resourceId])
   @@index([type])
@@ -1118,6 +1122,7 @@ enum ProtocolStatus {
   PENDENTE
   CONCLUIDO
   ARQUIVADO
+
   @@schema("jurfis")
 }
 
@@ -1126,12 +1131,14 @@ enum PartRole {
   PATRONO
   REPRESENTANTE
   OUTRO
+
   @@schema("jurfis")
 }
 
 enum ContactType {
   TELEFONE
   EMAIL
+
   @@schema("jurfis")
 }
 
@@ -1139,6 +1146,7 @@ enum AddressType {
   CORRESPONDENCIA
   RECURSO
   OUTRO
+
   @@schema("jurfis")
 }
 
@@ -1149,12 +1157,14 @@ enum TramitationPurpose {
   JULGAMENTO
   DILIGENCIA
   OUTRO
+
   @@schema("jurfis")
 }
 
 enum TramitationStatus {
   PENDENTE
   ENTREGUE
+
   @@schema("jurfis")
 }
 
@@ -1173,12 +1183,14 @@ enum ResourceStatus {
   ASSINATURA_ACORDAO
   NOTIFICACAO_DECISAO
   CONCLUIDO
+
   @@schema("jurfis")
 }
 
 enum ResourceType {
   VOLUNTARIO
   OFICIO
+
   @@schema("jurfis")
 }
 
@@ -1187,6 +1199,7 @@ enum RegistrationType {
   ECONOMICA
   CPF
   CNPJ
+
   @@schema("jurfis")
 }
 
@@ -1195,6 +1208,7 @@ enum AuthorityType {
   JULGADOR_SINGULAR
   COORDENADOR
   OUTROS
+
   @@schema("jurfis")
 }
 
@@ -1202,14 +1216,16 @@ enum SessionType {
   ORDINARIA
   EXTRAORDINARIA
   OUTRO
+
   @@schema("jurfis")
 }
 
 enum SessionStatus {
-  PENDENTE
-  EM_PROGRESSO
-  CONCLUIDA
-  CANCELADA
+  PUBLICACAO    // Aguardando publicação da pauta ou republicação após alterações
+  PENDENTE      // Pauta publicada, aguardando sessão e julgamentos
+  CONCLUIDA     // Sessão finalizada
+  CANCELADA     // Sessão cancelada
+
   @@schema("jurfis")
 }
 
@@ -1219,24 +1235,28 @@ enum SessionResourceStatus {
   DILIGENCIA
   PEDIDO_VISTA
   JULGADO
+
   @@schema("jurfis")
 }
 
 enum DistributionType {
   RELATOR
   REVISOR
+
   @@schema("jurfis")
 }
 
 enum DecisionType {
   PRELIMINAR
   MERITO
+
   @@schema("jurfis")
 }
 
 enum VotingType {
   PRELIMINAR
   MERITO
+
   @@schema("jurfis")
 }
 
@@ -1245,6 +1265,7 @@ enum VoteType {
   REVISOR
   PRESIDENTE
   VOTANTE
+
   @@schema("jurfis")
 }
 
@@ -1253,6 +1274,7 @@ enum ParticipationStatus {
   AUSENTE
   IMPEDIDO
   SUSPEITO
+
   @@schema("jurfis")
 }
 
@@ -1261,12 +1283,14 @@ enum VotePosition {
   ACOMPANHA_REVISOR
   VOTO_PROPRIO
   ABSTENCAO
+
   @@schema("jurfis")
 }
 
 enum Gender {
   MASCULINO
   FEMININO
+
   @@schema("jurfis")
 }
 
@@ -1276,6 +1300,7 @@ enum NotificationType {
   DILIGENCIA
   DECISAO
   OUTRO
+
   @@schema("jurfis")
 }
 
@@ -1284,6 +1309,7 @@ enum NotificationStatus {
   ENVIADO
   ERRO
   AGENDADO
+
   @@schema("jurfis")
 }
 
@@ -1293,6 +1319,7 @@ enum NotificationContactStatus {
   ENTREGUE
   CONFIRMADO
   ERRO
+
   @@schema("jurfis")
 }
 
@@ -1301,6 +1328,7 @@ enum NotificationChannel {
   WHATSAPP
   CORREIOS
   EDITAL
+
   @@schema("jurfis")
 }
 
@@ -1310,13 +1338,15 @@ enum DocumentType {
   PARECER
   VOTO
   OUTROS
+
   @@schema("jurfis")
 }
 
 enum PublicationType {
   SESSAO
+  ACORDAO
   CIENCIA
-  OUTRO
+
   @@schema("jurfis")
 }
 
@@ -1328,5 +1358,6 @@ enum HistoryAction {
   SESSION_ADDED
   NOTIFICATION_SENT
   TRAMITATION_ADDED
+
   @@schema("jurfis")
 }

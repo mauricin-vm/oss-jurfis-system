@@ -293,14 +293,46 @@ export default function ContatosPage() {
       <CCRPageWrapper title="Gerenciar Contatos" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <Skeleton className="h-7 w-48" />
-            <Skeleton className="h-4 w-96 mt-1.5" />
+            <CardTitle>Contatos das Partes</CardTitle>
+            <CardDescription>
+              Gerencie os contatos (telefones e e-mails) das partes envolvidas no processo.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-40 w-full" />
+            <div className="space-y-6">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                  {/* Header da Parte */}
+                  <div className="border-b pb-3">
+                    <Skeleton className="h-6 w-48 mb-1" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+
+                  {/* Contatos */}
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-20" />
+                    {Array.from({ length: 2 }).map((_, j) => (
+                      <div key={j} className="flex gap-2 items-center">
+                        <div className="grid grid-cols-2 gap-2 flex-1">
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="flex gap-2 items-center shrink-0">
+                          <Skeleton className="h-6 w-11" />
+                          <Skeleton className="h-10 w-10" />
+                        </div>
+                      </div>
+                    ))}
+                    <Skeleton className="h-9 w-full" />
+                  </div>
+                </div>
               ))}
+
+              {/* Botões de Ação */}
+              <div className="flex justify-end gap-4 pt-4">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-40" />
+              </div>
             </div>
           </CardContent>
         </Card>

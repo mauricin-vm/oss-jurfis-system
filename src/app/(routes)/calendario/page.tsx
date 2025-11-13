@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useSidebarConfig } from '@/contexts/sidebar-context';
 import { useApi } from '@/hooks/use-api';
 import { MiniCalendar } from './components/mini-calendar';
@@ -270,13 +271,21 @@ function CalendarioContent() {
         <div className="flex items-center gap-2 px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
-          <div className="flex items-center gap-2 text-sm">
-            <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
-              Menu
-            </Link>
-            <span className="text-muted-foreground">/</span>
-            <span className="font-semibold">Calendário</span>
-          </div>
+          {showInitialLoading ? (
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-12" />
+              <span className="text-muted-foreground">/</span>
+              <Skeleton className="h-4 w-20" />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm">
+              <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+                Menu
+              </Link>
+              <span className="text-muted-foreground">/</span>
+              <span className="font-semibold">Calendário</span>
+            </div>
+          )}
         </div>
       </header>
 

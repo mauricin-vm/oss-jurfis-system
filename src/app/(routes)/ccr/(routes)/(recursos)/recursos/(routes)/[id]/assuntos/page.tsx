@@ -66,11 +66,40 @@ export default function EditarAssuntosPage() {
         <CCRPageWrapper title="Editar Assunto" breadcrumbs={breadcrumbs}>
           <Card>
             <CardHeader>
-              <Skeleton className="h-7 w-48" />
-              <Skeleton className="h-4 w-96 mt-1.5" />
+              <CardTitle>Editar Assunto</CardTitle>
+              <CardDescription>
+                Selecione o assunto principal e os subitens relacionados ao recurso.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Skeleton className="h-[400px]" />
+              <div className="space-y-6">
+                {/* Assunto Principal */}
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-3 w-80" />
+                </div>
+
+                {/* Subitens */}
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex items-center space-x-2">
+                        <Skeleton className="h-5 w-5" />
+                        <Skeleton className="h-4 w-full" />
+                      </div>
+                    ))}
+                  </div>
+                  <Skeleton className="h-3 w-96" />
+                </div>
+
+                {/* Botões */}
+                <div className="flex justify-end gap-4">
+                  <Skeleton className="h-10 w-24" />
+                  <Skeleton className="h-10 w-40" />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </CCRPageWrapper>

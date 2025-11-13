@@ -57,11 +57,56 @@ export default function EditarRecursoPage() {
       <CCRPageWrapper title="Editar Processo" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <Skeleton className="h-7 w-48" />
-            <Skeleton className="h-4 w-96 mt-1.5" />
+            <CardTitle>Editar Processo</CardTitle>
+            <CardDescription>
+              Atualize o status, tipo e informações gerais do processo
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-[400px]" />
+            <div className="space-y-6">
+              {/* Linha 1: Número do Recurso e Número do Processo */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </div>
+
+              {/* Linha 2: Status e Tipo de Recurso */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </div>
+
+              {/* Nome do Processo */}
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+
+              {/* Processos Apensos */}
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+
+              {/* Botões */}
+              <div className="flex justify-end gap-4">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-40" />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </CCRPageWrapper>

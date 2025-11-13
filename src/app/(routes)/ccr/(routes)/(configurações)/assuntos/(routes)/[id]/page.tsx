@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { SubjectForm } from '../../components/subject-form';
 import { SubjectFormSkeleton } from '../../components/subject-form-skeleton';
 import { CCRPageWrapper } from '../../../../../components/ccr-page-wrapper';
@@ -78,8 +77,10 @@ export default function EditarAssuntoPage() {
       <CCRPageWrapper title="Editar Assunto" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <Skeleton className="h-7 w-48" />
-            <Skeleton className="h-4 w-96 mt-1.5" />
+            <CardTitle>Editar Assunto</CardTitle>
+            <CardDescription>
+              Atualize as informações do assunto.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <SubjectFormSkeleton />

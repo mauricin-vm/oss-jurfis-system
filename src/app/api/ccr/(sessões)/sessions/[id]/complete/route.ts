@@ -1,0 +1,81 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+
+/**
+ * POST /api/ccr/sessions/[id]/complete
+ * Conclui a sessão
+ */
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Não autorizado' },
+        { status: 401 }
+      );
+    }
+
+    // Buscar sessão
+    const sessionData = await prisma.session.findUnique({
+      where: { id: params.id },
+      include: {
+        resources: true
+      }
+    });
+
+    if (!sessionData) {
+      return NextResponse.json(
+        { error: 'Sessão não encontrada' },
+        { status: 404 }
+      );
+    }
+
+    // Verificar se a sessão está no status PENDENTE
+    if (sessionData.status !== 'PENDENTE') {
+      return NextResponse.json(
+        { error: 'Apenas sessões com status PENDENTE podem ser concluídas' },
+        { status: 400 }
+      );
+    }
+
+    // Verificar se todos os processos foram julgados
+    const processosPendentes = sessionData.resources.filter(
+      r => r.status !== 'JULGADO'
+    );
+
+    if (processosPendentes.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Todos os processos da pauta devem ser julgados antes de concluir a sessão',
+          processosPendentes: processosPendentes.length
+        },
+        { status: 400 }
+      );
+    }
+
+    // Atualizar status da sessão para CONCLUIDA
+    const updatedSession = await prisma.session.update({
+      where: { id: params.id },
+      data: {
+        status: 'CONCLUIDA'
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      session: updatedSession
+    });
+  } catch (error) {
+    console.error('Erro ao concluir sessão:', error);
+    return NextResponse.json(
+      { error: 'Erro ao concluir sessão' },
+      { status: 500 }
+    );
+  }
+}
