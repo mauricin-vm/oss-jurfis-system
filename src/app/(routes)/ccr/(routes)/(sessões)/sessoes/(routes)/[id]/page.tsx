@@ -27,14 +27,69 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { TooltipWrapper } from '@/components/ui/tooltip-wrapper';
 
+interface MemberVote {
+  id: string;
+  voteType: string;
+  participationStatus: string;
+  votePosition: string | null;
+  isQualityVote: boolean;
+  justification: string | null;
+  observations: string | null;
+  member: {
+    id: string;
+    name: string;
+    role: string;
+  };
+  voteDecision: {
+    id: string;
+    type: string;
+    code: string;
+    name: string;
+  } | null;
+  followsMember: {
+    id: string;
+    name: string;
+  } | null;
+}
+
+interface VotingResult {
+  id: string;
+  type: string;
+  totalVotes: number;
+  votesInFavor: number;
+  votesAgainst: number;
+  abstentions: number;
+  qualityVoteUsed: boolean;
+  justification: string | null;
+  decision: {
+    id: string;
+    type: string;
+    code: string;
+    name: string;
+  };
+  winningMember: {
+    id: string;
+    name: string;
+  };
+  memberVotes: MemberVote[];
+}
+
+interface Judgment {
+  id: string;
+  observations: string | null;
+  winningVotingResult: VotingResult;
+}
+
 interface SessionResource {
   id: string;
   status: string;
   order: number;
   observations: string | null;
+  createdAt: Date;
   resource: {
     id: string;
     processNumber: string;
+    processName: string | null;
     protocol: {
       presenter: string;
     };
@@ -44,8 +99,8 @@ interface SessionResource {
     name: string;
     role: string;
   } | null;
-  judgment: any | null;
-  sessionVotingResults: any[];
+  judgment: Judgment | null;
+  sessionVotingResults: VotingResult[];
 }
 
 interface SessionMember {
@@ -53,6 +108,18 @@ interface SessionMember {
   member: {
     id: string;
     name: string;
+  };
+}
+
+interface SessionDistribution {
+  id: string;
+  resourceId: string;
+  type: string;
+  distributionOrder: number;
+  member: {
+    id: string;
+    name: string;
+    role: string;
   };
 }
 
@@ -75,6 +142,7 @@ interface Session {
   } | null;
   resources: SessionResource[];
   members: SessionMember[];
+  distributions: SessionDistribution[];
   minutes: {
     id: string;
     minutesNumber: string;
@@ -140,6 +208,40 @@ const resourceStatusBadgeColors: Record<string, string> = {
   DILIGENCIA: 'bg-violet-100 text-violet-700 hover:bg-violet-100',
   PEDIDO_VISTA: 'bg-orange-100 text-orange-700 hover:bg-orange-100',
   JULGADO: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100',
+};
+
+const distributionTypeLabels: Record<string, string> = {
+  RELATOR: 'Relator',
+  REVISOR: 'Revisor',
+};
+
+const voteTypeLabels: Record<string, string> = {
+  RELATOR: 'Relator',
+  REVISOR: 'Revisor',
+  PRESIDENTE: 'Presidente',
+  VOTANTE: 'Votante',
+};
+
+const votePositionLabels: Record<string, string> = {
+  ACOMPANHA_RELATOR: 'Acomp. relator',
+  ACOMPANHA_REVISOR: 'Acomp. revisor',
+  VOTO_PROPRIO: 'Voto próprio',
+  ABSTENCAO: 'Abstenção',
+};
+
+// Cores para decisões (usadas nos badges de resultado)
+const getDecisionColor = (decisionName: string): string => {
+  const name = decisionName.toUpperCase();
+  if (name.includes('DEFERIDO') || name.includes('PROCEDENTE')) {
+    return 'bg-green-100 text-green-800 hover:bg-green-100';
+  }
+  if (name.includes('INDEFERIDO') || name.includes('IMPROCEDENTE')) {
+    return 'bg-red-100 text-red-800 hover:bg-red-100';
+  }
+  if (name.includes('PARCIAL')) {
+    return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100';
+  }
+  return 'bg-gray-100 text-gray-800 hover:bg-gray-100';
 };
 
 export default function VisualizarSessaoPage() {
@@ -687,95 +789,248 @@ export default function VisualizarSessaoPage() {
             <div className="space-y-4">
               {session.resources
                 .sort((a, b) => a.order - b.order)
-                .map((resource) => (
-                  <div
-                    key={resource.id}
-                    className={cn(
-                      'bg-white rounded-lg border-l-4 border p-6',
-                      resourceStatusColors[resource.status] || 'border-gray-300'
-                    )}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 font-semibold text-lg">
-                          {resource.order}
+                .map((resource) => {
+                  // Buscar relator e revisor nas distribuições da sessão
+                  const relator = session.distributions?.find(
+                    d => d.resourceId === resource.resource.id && d.type === 'RELATOR'
+                  );
+                  const revisor = session.distributions?.find(
+                    d => d.resourceId === resource.resource.id && d.type === 'REVISOR'
+                  );
+
+                  // Determinar cor do card baseada no resultado
+                  const cardBorderColor = resource.judgment
+                    ? getDecisionColor(resource.judgment.winningVotingResult.decision.name).split(' ')[0].replace('bg-', 'border-l-')
+                    : 'border-l-gray-300';
+
+                  return (
+                    <div
+                      key={resource.id}
+                      className={cn(
+                        'bg-white rounded-lg border-l-4 border p-6',
+                        cardBorderColor
+                      )}
+                    >
+                      {/* Cabeçalho do Card */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-100 text-green-800 font-semibold text-lg flex-shrink-0">
+                            {resource.order}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="mb-2">
+                              <Link
+                                href={`/ccr/recursos/${resource.resource.id}`}
+                                target="_blank"
+                                className="text-lg font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                {resource.resource.processNumber}
+                              </Link>
+                              {resource.resource.processName && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {resource.resource.processName}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="space-y-1 text-sm">
+                              {relator && (
+                                <div>
+                                  <span className="font-medium">Relator: </span>
+                                  <Link
+                                    href={`/ccr/membros/${relator.member.id}`}
+                                    target="_blank"
+                                    className="text-blue-600 hover:text-blue-800 hover:underline"
+                                  >
+                                    {relator.member.name}
+                                  </Link>
+                                </div>
+                              )}
+                              {revisor && (
+                                <div>
+                                  <span className="font-medium">Revisor: </span>
+                                  <Link
+                                    href={`/ccr/membros/${revisor.member.id}`}
+                                    target="_blank"
+                                    className="text-blue-600 hover:text-blue-800 hover:underline"
+                                  >
+                                    {revisor.member.name}
+                                  </Link>
+                                </div>
+                              )}
+                              {resource.specificPresident && (
+                                <div>
+                                  <span className="font-medium">Distribuição: </span>
+                                  <span>{resource.specificPresident.name}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <Link
-                            href={`/ccr/recursos/${resource.resource.id}`}
-                            className="text-lg font-semibold text-blue-600 hover:text-blue-800 hover:underline"
-                          >
-                            {resource.resource.processNumber}
-                          </Link>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {resource.resource.protocol.presenter}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            'inline-flex items-center gap-1.5',
-                            resourceStatusBadgeColors[resource.status] ||
-                              'bg-gray-100 text-gray-800 hover:bg-gray-100'
+
+                        <div className="flex items-start gap-2 flex-shrink-0">
+                          {/* Badge de resultado (se houver julgamento) */}
+                          {resource.judgment && (
+                            <Badge
+                              variant="secondary"
+                              className={cn(
+                                'inline-flex items-center gap-1.5',
+                                getDecisionColor(resource.judgment.winningVotingResult.decision.name)
+                              )}
+                            >
+                              {resource.judgment.winningVotingResult.decision.name.toUpperCase()}
+                            </Badge>
                           )}
-                        >
-                          {resourceStatusLabels[resource.status]}
-                        </Badge>
 
-                        {/* Botão Julgar - aparece quando sessão está PENDENTE e processo ainda não julgado */}
-                        {canJudgeProcesses && resource.status !== 'JULGADO' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="cursor-pointer"
-                            onClick={() => router.push(`/ccr/sessoes/${session.id}/processos/${resource.id}/julgar`)}
-                          >
-                            <Gavel className="h-4 w-4 mr-2" />
-                            Julgar
-                          </Button>
-                        )}
+                          {/* Botão Julgar - aparece quando sessão está PENDENTE e processo ainda não julgado */}
+                          {canJudgeProcesses && resource.status !== 'JULGADO' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="cursor-pointer"
+                              onClick={() => router.push(`/ccr/sessoes/${session.id}/processos/${resource.id}/julgar`)}
+                            >
+                              <Gavel className="h-4 w-4 mr-2" />
+                              Julgar
+                            </Button>
+                          )}
 
-                        {/* Botão Remover - aparece quando pode adicionar/remover processos */}
-                        {canAddRemoveProcesses && resource.status !== 'JULGADO' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={async () => {
-                              if (confirm('Tem certeza que deseja remover este processo da pauta?')) {
-                                try {
-                                  const response = await fetch(`/api/ccr/session-resources/${resource.id}`, {
-                                    method: 'DELETE',
-                                  });
-                                  if (response.ok) {
-                                    fetchSession();
-                                  } else {
-                                    alert('Erro ao remover processo da pauta');
+                          {/* Botão Remover - aparece quando pode adicionar/remover processos */}
+                          {canAddRemoveProcesses && resource.status !== 'JULGADO' && (
+                            <TooltipWrapper content="Remover processo da pauta">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={async () => {
+                                  if (confirm('Tem certeza que deseja remover este processo da pauta?')) {
+                                    try {
+                                      const response = await fetch(`/api/ccr/session-resources/${resource.id}`, {
+                                        method: 'DELETE',
+                                      });
+                                      if (response.ok) {
+                                        fetchSession();
+                                      } else {
+                                        alert('Erro ao remover processo da pauta');
+                                      }
+                                    } catch (error) {
+                                      console.error('Error removing resource:', error);
+                                      alert('Erro ao remover processo da pauta');
+                                    }
                                   }
-                                } catch (error) {
-                                  console.error('Error removing resource:', error);
-                                  alert('Erro ao remover processo da pauta');
-                                }
-                              }
-                            }}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </TooltipWrapper>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    {resource.observations && (
-                      <div className="mt-4">
-                        <p className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-lg">
-                          {resource.observations}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      {/* Seção de Ata (só aparece se houver julgamento) */}
+                      {resource.judgment && resource.judgment.observations && (
+                        <div className="mt-6 pt-6 border-t">
+                          <h4 className="font-semibold mb-2">Ata:</h4>
+                          <p className="text-sm">{resource.judgment.observations}</p>
+                        </div>
+                      )}
+
+                      {/* Seção de Votos Registrados (só aparece se houver julgamento) */}
+                      {resource.judgment && resource.judgment.winningVotingResult.memberVotes.length > 0 && (
+                        <div className="mt-6 pt-6 border-t">
+                          <h4 className="font-semibold mb-4">Votos registrados:</h4>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Coluna: Relatores/Revisores */}
+                            <div>
+                              <h5 className="font-medium text-sm mb-3">Relatores/Revisores</h5>
+                              <div className="space-y-2">
+                                {resource.judgment.winningVotingResult.memberVotes
+                                  .filter(vote => vote.voteType === 'RELATOR' || vote.voteType === 'REVISOR')
+                                  .map(vote => (
+                                    <div key={vote.id} className="flex items-center justify-between text-sm">
+                                      <div>
+                                        <span className="font-medium">{voteTypeLabels[vote.voteType]}</span>
+                                        <span className="ml-1">{vote.member.name}</span>
+                                      </div>
+                                      {vote.voteDecision ? (
+                                        <Badge
+                                          variant="secondary"
+                                          className={cn(
+                                            'text-xs',
+                                            getDecisionColor(vote.voteDecision.name)
+                                          )}
+                                        >
+                                          {vote.voteDecision.name.toUpperCase()}
+                                        </Badge>
+                                      ) : vote.votePosition ? (
+                                        <span className="text-blue-600 text-xs">
+                                          {votePositionLabels[vote.votePosition]}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+
+                            {/* Coluna: Conselheiros */}
+                            <div>
+                              <h5 className="font-medium text-sm mb-3">Conselheiros</h5>
+                              <div className="text-sm">
+                                {(() => {
+                                  // Agrupar conselheiros por decisão
+                                  const votantes = resource.judgment!.winningVotingResult.memberVotes
+                                    .filter(vote => vote.voteType === 'VOTANTE' || vote.voteType === 'PRESIDENTE');
+
+                                  // Agrupar por decisão
+                                  const votesByDecision: Record<string, MemberVote[]> = {};
+                                  votantes.forEach(vote => {
+                                    const decisionName = vote.voteDecision?.name || 'Outros';
+                                    if (!votesByDecision[decisionName]) {
+                                      votesByDecision[decisionName] = [];
+                                    }
+                                    votesByDecision[decisionName].push(vote);
+                                  });
+
+                                  return Object.entries(votesByDecision).map(([decision, votes]) => (
+                                    <div key={decision} className="mb-2">
+                                      <span className={cn(
+                                        'font-semibold',
+                                        getDecisionColor(decision).includes('green') ? 'text-green-700' :
+                                        getDecisionColor(decision).includes('red') ? 'text-red-700' :
+                                        getDecisionColor(decision).includes('yellow') ? 'text-yellow-700' :
+                                        'text-gray-700'
+                                      )}>
+                                        {decision.toUpperCase()}:
+                                      </span>{' '}
+                                      <span>
+                                        {votes.map((v, idx) => (
+                                          <span key={v.id}>
+                                            {v.member.name}
+                                            {idx < votes.length - 1 && ', '}
+                                          </span>
+                                        ))}
+                                      </span>
+                                    </div>
+                                  ));
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Rodapé com data de registro (só aparece se houver julgamento) */}
+                      {resource.judgment && (
+                        <div className="mt-6 pt-6 border-t text-sm text-muted-foreground">
+                          Registrada em {format(new Date(resource.createdAt), "dd/MM/yyyy, HH:mm:ss", { locale: ptBR })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           )}
         </div>

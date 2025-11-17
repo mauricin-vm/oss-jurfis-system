@@ -596,8 +596,6 @@ model SessionResource {
   specificPresidentId String?
   specificPresident   Member? @relation("SessionResourcePresident", fields: [specificPresidentId], references: [id])
 
-  observations String? @db.Text
-
   // Relacionamentos
   judgment             SessionJudgment?
   sessionVotingResults SessionVotingResult[]
@@ -618,17 +616,17 @@ model SessionDistribution {
   resourceId String
   resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
-  type     DistributionType // RELATOR, REVISOR
-  memberId String
-  member   Member           @relation("SessionDistributions", fields: [memberId], references: [id])
+  // Campos de distribuição
+  firstDistributionId String?  // ID do primeiro membro distribuído (relator)
+  firstDistribution   Member?  @relation("DistributionFirstMember", fields: [firstDistributionId], references: [id])
+  distributedToId     String   // ID do membro para quem foi distribuído NESTA sessão
+  reviewersIds        String[] @default([]) // IDs dos revisores na ordem (acumulativo)
 
   // Informações da distribuição
   sessionId         String
   session           Session @relation("DistributionsSessions", fields: [sessionId], references: [id])
-  distributionOrder Int
-  reason            String? @db.Text
-
-  isActive Boolean @default(true)
+  distributionOrder Int // Ordem na pauta
+  isActive          Boolean @default(true)
 
   // Relacionamento com atas
   minutesDistributions SessionMinutesDistribution[] @relation("MinutesDistributions")
@@ -637,7 +635,8 @@ model SessionDistribution {
   updatedAt DateTime @updatedAt
 
   @@index([resourceId])
-  @@index([memberId])
+  @@index([firstDistributionId])
+  @@index([distributedToId])
   @@index([sessionId])
   @@index([isActive])
   @@map("CCR_SessionDistribution")
@@ -1027,7 +1026,7 @@ model Member {
   sessionsAsPresident         Session[]               @relation("SessionPresident")
   sessionsPresent             SessionMember[]         @relation("SessionMembersPresent")
   sessionResourcesAsPresident SessionResource[]       @relation("SessionResourcePresident")
-  distributions               SessionDistribution[]   @relation("SessionDistributions")
+  distributionsAsFirst        SessionDistribution[]   @relation("DistributionFirstMember")
   votes                       SessionMemberVote[]     @relation("MemberVotes")
   votesFollowed               SessionMemberVote[]     @relation("FollowedMembers")
   sessionVotingResultsWon     SessionVotingResult[]   @relation("VotingResultWinners")

@@ -54,6 +54,27 @@ export async function GET(
                 winningVotingResult: {
                   include: {
                     decision: true,
+                    memberVotes: {
+                      include: {
+                        member: {
+                          select: {
+                            id: true,
+                            name: true,
+                            role: true,
+                          },
+                        },
+                        voteDecision: true,
+                        followsMember: {
+                          select: {
+                            id: true,
+                            name: true,
+                          },
+                        },
+                      },
+                      orderBy: {
+                        createdAt: 'asc',
+                      },
+                    },
                   },
                 },
               },
@@ -62,13 +83,54 @@ export async function GET(
               include: {
                 decision: true,
                 winningMember: true,
+                memberVotes: {
+                  include: {
+                    member: {
+                      select: {
+                        id: true,
+                        name: true,
+                        role: true,
+                      },
+                    },
+                    voteDecision: true,
+                    followsMember: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                  },
+                  orderBy: {
+                    createdAt: 'asc',
+                  },
+                },
               },
             },
+          },
+          orderBy: {
+            order: 'asc',
           },
         },
         members: {
           include: {
             member: true,
+          },
+        },
+        distributions: {
+          where: {
+            isActive: true,
+          },
+          include: {
+            member: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+              },
+            },
+          },
+          orderBy: {
+            distributionOrder: 'asc',
           },
         },
         minutes: {

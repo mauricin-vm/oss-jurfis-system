@@ -72,9 +72,8 @@ export async function POST(req: Request) {
     const {
       sessionId,
       resourceId,
-      specificPresidentId,
+      memberId,
       order,
-      observations,
     } = body;
 
     if (!sessionId) {
@@ -83,6 +82,10 @@ export async function POST(req: Request) {
 
     if (!resourceId) {
       return new NextResponse('Recurso é obrigatório', { status: 400 });
+    }
+
+    if (!memberId) {
+      return new NextResponse('Membro é obrigatório', { status: 400 });
     }
 
     // Verificar se a sessão existe
@@ -94,24 +97,32 @@ export async function POST(req: Request) {
       return new NextResponse('Sessão não encontrada', { status: 404 });
     }
 
-    // Verificar se o recurso existe
+    // Verificar se o recurso existe e buscar suas distribuições ativas
     const resource = await prismadb.resource.findUnique({
       where: { id: resourceId },
+      include: {
+        distributions: {
+          where: {
+            isActive: true,
+          },
+          include: {
+            member: true,
+          },
+        },
+      },
     });
 
     if (!resource) {
       return new NextResponse('Recurso não encontrado', { status: 404 });
     }
 
-    // Verificar se o presidente específico existe (se fornecido)
-    if (specificPresidentId) {
-      const specificPresident = await prismadb.member.findUnique({
-        where: { id: specificPresidentId },
-      });
+    // Verificar se o membro existe
+    const member = await prismadb.member.findUnique({
+      where: { id: memberId },
+    });
 
-      if (!specificPresident) {
-        return new NextResponse('Presidente específico não encontrado', { status: 404 });
-      }
+    if (!member) {
+      return new NextResponse('Membro não encontrado', { status: 404 });
     }
 
     // Verificar se o recurso já está na sessão
@@ -139,14 +150,14 @@ export async function POST(req: Request) {
       finalOrder = lastResource ? lastResource.order + 1 : 1;
     }
 
+    // Criar SessionResource
     const sessionResource = await prismadb.sessionResource.create({
       data: {
         sessionId,
         resourceId,
-        specificPresidentId: specificPresidentId || null,
+        specificPresidentId: null, // Será preenchido no resultado se houver mudança de presidente
         order: finalOrder,
         status: 'EM_PAUTA',
-        observations: observations || null,
       },
       include: {
         session: {
@@ -175,6 +186,54 @@ export async function POST(req: Request) {
             sessionVotingResults: true,
           },
         },
+      },
+    });
+
+    // Criar registros em SessionDistribution
+    // Buscar a ordem da última distribuição na sessão
+    const lastDistribution = await prismadb.sessionDistribution.findFirst({
+      where: { sessionId },
+      orderBy: { distributionOrder: 'desc' },
+    });
+
+    let distributionOrder = lastDistribution ? lastDistribution.distributionOrder + 1 : 1;
+
+    // Buscar a última distribuição deste recurso (se existir) para copiar o estado
+    const lastResourceDistribution = await prismadb.sessionDistribution.findFirst({
+      where: {
+        resourceId,
+        isActive: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        firstDistributionId: true,
+        reviewersIds: true,
+      },
+    });
+
+    // Estado atual das distribuições (copiado da última ou iniciado)
+    let currentFirstDistributionId = lastResourceDistribution?.firstDistributionId || null;
+    let currentReviewersIds = lastResourceDistribution?.reviewersIds || [];
+
+    // Determinar se o membro selecionado vira primeiro membro (relator) ou revisor
+    if (!currentFirstDistributionId) {
+      // Não há primeiro membro ainda, o membro selecionado será o primeiro (relator)
+      currentFirstDistributionId = memberId;
+    } else if (currentFirstDistributionId !== memberId && !currentReviewersIds.includes(memberId)) {
+      // Adicionar como novo revisor (se não for o primeiro membro e não estiver já na lista)
+      currentReviewersIds = [...currentReviewersIds, memberId];
+    }
+
+    // Criar o registro de distribuição com o estado completo
+    await prismadb.sessionDistribution.create({
+      data: {
+        resourceId,
+        sessionId,
+        firstDistributionId: currentFirstDistributionId,
+        distributedToId: memberId,
+        reviewersIds: currentReviewersIds,
+        distributionOrder,
+        isActive: true,
       },
     });
 
