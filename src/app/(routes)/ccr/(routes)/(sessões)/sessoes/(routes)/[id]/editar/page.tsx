@@ -80,10 +80,12 @@ export default function EditarSessaoPage() {
       <CCRPageWrapper title="Editar Sessão" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <CardTitle>Editar Sessão</CardTitle>
-            <CardDescription>
-              Atualize as informações da sessão conforme necessário.
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Editar Sessão</CardTitle>
+              <CardDescription>
+                Atualize as informações da sessão conforme necessário.
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -145,10 +147,12 @@ export default function EditarSessaoPage() {
     <CCRPageWrapper title="Editar Sessão" breadcrumbs={breadcrumbs}>
       <Card>
         <CardHeader>
-          <CardTitle>Editar Sessão</CardTitle>
-          <CardDescription>
-            Atualize as informações da sessão conforme necessário.
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Editar Sessão</CardTitle>
+            <CardDescription>
+              Atualize as informações da sessão conforme necessário.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <SessionForm initialData={sessionData} />

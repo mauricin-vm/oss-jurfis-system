@@ -40,10 +40,12 @@ export default function NovaTramitacaoPage() {
     >
       <Card>
         <CardHeader>
-          <CardTitle>Cadastrar Tramitação</CardTitle>
-          <CardDescription>
-            Preencha as informações da nova tramitação.
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Cadastrar Tramitação</CardTitle>
+            <CardDescription>
+              Preencha as informações da nova tramitação.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <TramitationForm />

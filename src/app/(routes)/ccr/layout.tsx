@@ -47,11 +47,12 @@ export default function CCRLayout({ children }: { children: React.ReactNode }) {
       // Construir subitens de Configurações baseado na role
       const configSubItems = [];
 
-      // Assuntos, Autoridades, Membros e Setores - apenas para ADMIN e EMPLOYEE
+      // Assuntos, Autoridades, Membros, Setores e Votos - apenas para ADMIN e EMPLOYEE
       if (!isExternal) {
         configSubItems.push(
           { label: 'Assuntos', href: '/ccr/assuntos' },
           { label: 'Autoridades', href: '/ccr/autoridades' },
+          { label: 'Votos', href: '/ccr/votos' },
           { label: 'Membros', href: '/ccr/membros' },
           { label: 'Setores', href: '/ccr/setores' }
         );
@@ -133,6 +134,14 @@ export default function CCRLayout({ children }: { children: React.ReactNode }) {
           label: 'Novo Setor',
           icon: Plus,
           onClick: () => router.push('/ccr/setores/novo'),
+        });
+      }
+      // Se estiver na página de votos, adicionar botão "Novo Voto"
+      else if (pathname?.startsWith('/ccr/votos')) {
+        customActions.push({
+          label: 'Novo Voto',
+          icon: Plus,
+          onClick: () => router.push('/ccr/votos/novo'),
         });
       }
       // Se estiver na página de protocolos, adicionar botão "Novo Protocolo"

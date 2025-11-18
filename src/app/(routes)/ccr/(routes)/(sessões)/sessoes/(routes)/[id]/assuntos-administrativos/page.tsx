@@ -113,10 +113,12 @@ export default function AssuntosAdministrativosPage() {
       <CCRPageWrapper title="Assuntos Administrativos" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <CardTitle>Assuntos Administrativos da Sessão</CardTitle>
-            <CardDescription>
-              Registre os assuntos administrativos discutidos durante a sessão
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Assuntos Administrativos da Sessão</CardTitle>
+              <CardDescription>
+                Registre os assuntos administrativos discutidos durante a sessão
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -141,10 +143,12 @@ export default function AssuntosAdministrativosPage() {
     <CCRPageWrapper title="Assuntos Administrativos" breadcrumbs={breadcrumbs}>
       <Card>
         <CardHeader>
-          <CardTitle>Assuntos Administrativos da Sessão</CardTitle>
-          <CardDescription>
-            Registre os assuntos administrativos discutidos durante a sessão
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Assuntos Administrativos da Sessão</CardTitle>
+            <CardDescription>
+              Registre os assuntos administrativos discutidos durante a sessão
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">

@@ -343,10 +343,12 @@ export default function EnderecosPage() {
       <CCRPageWrapper title="Gerenciar Endereços" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <CardTitle>Endereços do Recurso</CardTitle>
-            <CardDescription>
-              Gerencie os endereços vinculados ao recurso.
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Endereços do Recurso</CardTitle>
+              <CardDescription>
+                Gerencie os endereços vinculados ao recurso.
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -433,10 +435,12 @@ export default function EnderecosPage() {
     <CCRPageWrapper title="Gerenciar Endereços" breadcrumbs={breadcrumbs}>
       <Card>
         <CardHeader>
-          <CardTitle>Endereços do Recurso</CardTitle>
-          <CardDescription>
-            Gerencie os endereços vinculados ao recurso.
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Endereços do Recurso</CardTitle>
+            <CardDescription>
+              Gerencie os endereços vinculados ao recurso.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">

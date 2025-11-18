@@ -81,10 +81,12 @@ export default function EditarPartesPage() {
       <CCRPageWrapper title="Editar Partes Interessadas" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <CardTitle>Editar Partes Interessadas</CardTitle>
-            <CardDescription>
-              Gerencie as partes interessadas vinculadas ao recurso.
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Editar Partes Interessadas</CardTitle>
+              <CardDescription>
+                Gerencie as partes interessadas vinculadas ao recurso.
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-8">
@@ -174,10 +176,12 @@ export default function EditarPartesPage() {
     <CCRPageWrapper title="Editar Partes Interessadas" breadcrumbs={breadcrumbs}>
       <Card>
         <CardHeader>
-          <CardTitle>Editar Partes Interessadas</CardTitle>
-          <CardDescription>
-            Gerencie as partes interessadas vinculadas ao recurso.
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Editar Partes Interessadas</CardTitle>
+            <CardDescription>
+              Gerencie as partes interessadas vinculadas ao recurso.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <AuthoritiesForm initialData={resource} registeredAuthorities={registeredAuthorities} />

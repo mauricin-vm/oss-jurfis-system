@@ -241,7 +241,7 @@ function AddCustomPartModal({
       return;
     }
     if (!role.trim()) {
-      toast.warning('Tipo/Função é obrigatório');
+      toast.warning('Função é obrigatória');
       return;
     }
     onAdd(name, role);
@@ -323,9 +323,15 @@ function AddCustomPartModal({
   );
 }
 
+interface Session {
+  id: string;
+  sessionNumber: string;
+}
+
 export default function AttendancePage() {
   const router = useRouter();
   const params = useParams();
+  const [sessionData, setSessionData] = useState<Session | null>(null);
   const [data, setData] = useState<AttendanceData | null>(null);
   const [attendances, setAttendances] = useState<AttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -342,6 +348,15 @@ export default function AttendancePage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+
+      // Buscar dados da sessão
+      const sessionResponse = await fetch(`/api/ccr/sessions/${params.id}`);
+      if (sessionResponse.ok) {
+        const sessionResult = await sessionResponse.json();
+        setSessionData(sessionResult);
+      }
+
+      // Buscar dados de presença
       const response = await fetch(`/api/ccr/sessions/${params.id}/processos/${params.resourceId}/presenca`);
       if (response.ok) {
         const result: AttendanceData = await response.json();
@@ -465,7 +480,7 @@ export default function AttendancePage() {
     { label: 'Menu', href: '/' },
     { label: 'CCR', href: '/ccr' },
     { label: 'Sessões', href: '/ccr/sessoes' },
-    { label: `Sessão`, href: `/ccr/sessoes/${params.id}` },
+    { label: `Sessão n. ${sessionData?.sessionNumber || 'Carregando...'}`, href: `/ccr/sessoes/${params.id}` },
     { label: 'Presença de Partes' },
   ];
 
@@ -474,10 +489,12 @@ export default function AttendancePage() {
       <CCRPageWrapper title="Presença de Partes" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <CardTitle>Registrar Presença</CardTitle>
-            <CardDescription>
-              Registre as pessoas que compareceram ao julgamento
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Registrar Presença</CardTitle>
+              <CardDescription>
+                Registre as pessoas que compareceram ao julgamento
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -527,11 +544,13 @@ export default function AttendancePage() {
       <CCRPageWrapper title="Presença de Partes" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <CardTitle>Registrar Presença</CardTitle>
-            <CardDescription>
-              Processo: {data.sessionResource.resource.processNumber}
-              {data.sessionResource.resource.processName && ` - ${data.sessionResource.resource.processName}`}
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Registrar Presença</CardTitle>
+              <CardDescription>
+                Processo: {data.sessionResource.resource.processNumber}
+                {data.sessionResource.resource.processName && ` - ${data.sessionResource.resource.processName}`}
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -576,7 +595,7 @@ export default function AttendancePage() {
                     <TableHeader>
                       <TableRow className="bg-muted hover:bg-muted">
                         <TableHead className="w-[45%]">Nome</TableHead>
-                        <TableHead className="w-[35%]">Tipo/Função</TableHead>
+                        <TableHead className="w-[35%]">Função</TableHead>
                         <TableHead className="w-[15%]">Origem</TableHead>
                         <TableHead className="w-[5%]"></TableHead>
                       </TableRow>

@@ -89,10 +89,12 @@ export default function EditarProtocoloPage() {
       <CCRPageWrapper title="Editar Protocolo" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <CardTitle>Editar Protocolo</CardTitle>
-            <CardDescription>
-              Atualize as informações do protocolo.
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Editar Protocolo</CardTitle>
+              <CardDescription>
+                Atualize as informações do protocolo.
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <ProtocolFormSkeleton />
@@ -118,11 +120,13 @@ export default function EditarProtocoloPage() {
     <CCRPageWrapper title="Editar Protocolo" breadcrumbs={breadcrumbs}>
       <Card>
         <CardHeader>
-          <CardTitle>Editar Protocolo</CardTitle>
-          <CardDescription>
-            Atualize as informações do protocolo.
-            {protocol.resource && ' (Convertido em recurso - visualização apenas)'}
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Editar Protocolo</CardTitle>
+            <CardDescription>
+              Atualize as informações do protocolo.
+              {protocol.resource && ' (Convertido em recurso - visualização apenas)'}
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <ProtocolForm initialData={{

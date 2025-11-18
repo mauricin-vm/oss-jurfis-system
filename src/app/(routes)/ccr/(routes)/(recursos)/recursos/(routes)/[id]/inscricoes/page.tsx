@@ -70,10 +70,12 @@ export default function EditarInscricoesPage() {
       <CCRPageWrapper title="Editar Inscrições" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <CardTitle>Editar Inscrições</CardTitle>
-            <CardDescription>
-              Gerencie as inscrições e débitos relacionados ao recurso.
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Editar Inscrições</CardTitle>
+              <CardDescription>
+                Gerencie as inscrições e débitos relacionados ao recurso.
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent className="overflow-hidden">
             <div className="space-y-6">
@@ -208,10 +210,12 @@ export default function EditarInscricoesPage() {
     <CCRPageWrapper title="Editar Inscrições" breadcrumbs={breadcrumbs}>
       <Card>
         <CardHeader>
-          <CardTitle>Editar Inscrições</CardTitle>
-          <CardDescription>
-            Gerencie as inscrições e débitos relacionados ao recurso.
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Editar Inscrições</CardTitle>
+            <CardDescription>
+              Gerencie as inscrições e débitos relacionados ao recurso.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <ValuesForm initialData={resource} />

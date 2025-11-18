@@ -102,10 +102,12 @@ export default function SessionPublicationsPage() {
       <CCRPageWrapper title="Publicações da Sessão" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <CardTitle>Histórico de Publicações</CardTitle>
-            <CardDescription>
-              Visualize todas as publicações relacionadas a pauta.
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Histórico de Publicações</CardTitle>
+              <CardDescription>
+                Visualize todas as publicações relacionadas a pauta.
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -140,10 +142,12 @@ export default function SessionPublicationsPage() {
     <CCRPageWrapper title="Publicações da Sessão" breadcrumbs={breadcrumbs}>
       <Card>
         <CardHeader>
-          <CardTitle>Histórico de Publicações</CardTitle>
-          <CardDescription>
-            Visualize todas as publicações relacionadas a pauta.
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Histórico de Publicações</CardTitle>
+            <CardDescription>
+              Visualize todas as publicações relacionadas a pauta.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           {publications.length === 0 ? (

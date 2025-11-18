@@ -91,10 +91,12 @@ export default function ResourcePublicationsPage() {
       <CCRPageWrapper title="Publicações do Recurso" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <CardTitle>Histórico de Publicações</CardTitle>
-            <CardDescription>
-              Visualize todas as publicações relacionadas ao recurso.
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Histórico de Publicações</CardTitle>
+              <CardDescription>
+                Visualize todas as publicações relacionadas ao recurso.
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -136,10 +138,12 @@ export default function ResourcePublicationsPage() {
     <CCRPageWrapper title="Publicações do Recurso" breadcrumbs={breadcrumbs}>
       <Card>
         <CardHeader>
-          <CardTitle>Histórico de Publicações</CardTitle>
-          <CardDescription>
-            Visualize todas as publicações relacionadas ao recurso.
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Histórico de Publicações</CardTitle>
+            <CardDescription>
+              Visualize todas as publicações relacionadas ao recurso.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           {publications.length === 0 ? (

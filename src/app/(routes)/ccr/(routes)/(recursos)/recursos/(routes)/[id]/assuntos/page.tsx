@@ -66,10 +66,12 @@ export default function EditarAssuntosPage() {
         <CCRPageWrapper title="Editar Assunto" breadcrumbs={breadcrumbs}>
           <Card>
             <CardHeader>
-              <CardTitle>Editar Assunto</CardTitle>
-              <CardDescription>
-                Selecione o assunto principal e os subitens relacionados ao recurso.
-              </CardDescription>
+              <div className="space-y-1.5">
+                <CardTitle>Editar Assunto</CardTitle>
+                <CardDescription>
+                  Selecione o assunto principal e os subitens relacionados ao recurso.
+                </CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
@@ -110,10 +112,12 @@ export default function EditarAssuntosPage() {
           <CCRPageWrapper title="Editar Assunto" breadcrumbs={breadcrumbs}>
             <Card>
               <CardHeader>
-                <CardTitle>Editar Assunto</CardTitle>
-                <CardDescription>
-                  Selecione o assunto principal e os subitens relacionados ao recurso.
-                </CardDescription>
+                <div className="space-y-1.5">
+                  <CardTitle>Editar Assunto</CardTitle>
+                  <CardDescription>
+                    Selecione o assunto principal e os subitens relacionados ao recurso.
+                  </CardDescription>
+                </div>
               </CardHeader>
               <CardContent>
                 <SubjectsForm initialData={resource} onSubjectsLoaded={() => setSubjectsLoaded(true)} />

@@ -28,30 +28,24 @@ export default function SessionMembersPage() {
     return null;
   }
 
-  const breadcrumbs = sessionNumber
-    ? [
-        { label: 'Menu', href: '/' },
-        { label: 'CCR', href: '/ccr' },
-        { label: 'Sessões', href: '/ccr/sessoes' },
-        { label: `Sessão n. ${sessionNumber}`, href: `/ccr/sessoes/${params.id}` },
-        { label: 'Membros' }
-      ]
-    : [
-        { label: 'Menu', href: '/' },
-        { label: 'CCR', href: '/ccr' },
-        { label: 'Sessões', href: '/ccr/sessoes' },
-        { label: 'Sessão' },
-        { label: 'Membros' }
-      ];
+  const breadcrumbs = [
+    { label: 'Menu', href: '/' },
+    { label: 'CCR', href: '/ccr' },
+    { label: 'Sessões', href: '/ccr/sessoes' },
+    { label: `Sessão n. ${sessionNumber || 'Carregando...'}`, href: `/ccr/sessoes/${params.id}` },
+    { label: 'Membros' }
+  ];
 
   return (
     <CCRPageWrapper title="Gerenciar Membros" breadcrumbs={breadcrumbs}>
       <Card>
         <CardHeader>
-          <CardTitle>Conselheiros Participantes da Sessão</CardTitle>
-          <CardDescription>
-            Selecione os conselheiros que estarão presentes nesta sessão
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Conselheiros Participantes da Sessão</CardTitle>
+            <CardDescription>
+              Selecione os conselheiros que estarão presentes nesta sessão
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <SessionMembersForm

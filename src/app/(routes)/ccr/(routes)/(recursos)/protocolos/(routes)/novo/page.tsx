@@ -40,10 +40,12 @@ export default function NovoProtocoloPage() {
     >
       <Card>
         <CardHeader>
-          <CardTitle>Cadastrar Protocolo</CardTitle>
-          <CardDescription>
-            Preencha as informações do novo protocolo. O número será gerado automaticamente.
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Cadastrar Protocolo</CardTitle>
+            <CardDescription>
+              Preencha as informações do novo protocolo. O número será gerado automaticamente.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <ProtocolForm />

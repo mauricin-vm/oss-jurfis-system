@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CCRPageWrapper } from '../../../../../components/ccr-page-wrapper';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -912,20 +912,23 @@ export default function VisualizarSessaoPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Card de Informações da Sessão */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg border p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <Skeleton className="h-5 w-48" />
-                    <Skeleton className="h-4 w-64 mt-1.5" />
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-6 w-48" />
+                      <Skeleton className="h-4 w-64" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-9 w-9" />
+                      <Skeleton className="h-9 w-9" />
+                      <Skeleton className="h-9 w-9" />
+                      <Skeleton className="h-9 w-9" />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-9 w-9" />
-                    <Skeleton className="h-9 w-9" />
-                    <Skeleton className="h-9 w-9" />
-                    <Skeleton className="h-9 w-9" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {Array.from({ length: 9 }).map((_, i) => (
                     <div key={i}>
                       <Skeleton className="h-4 w-24 mb-1.5" />
@@ -933,39 +936,48 @@ export default function VisualizarSessaoPage() {
                     </div>
                   ))}
                 </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Card de Conselheiros Participantes */}
             <div>
-              <div className="bg-white rounded-lg border p-6 h-full">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <Skeleton className="h-5 w-48" />
-                    <Skeleton className="h-4 w-32 mt-1.5" />
+              <Card className="h-full">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-6 w-48" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <Skeleton className="h-9 w-9" />
                   </div>
-                  <Skeleton className="h-9 w-9" />
-                </div>
-                <Skeleton className="h-20 w-full" />
-              </div>
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-20 w-full" />
+                </CardContent>
+              </Card>
             </div>
           </div>
 
           {/* Card de Processos para Julgamento */}
-          <div className="bg-white rounded-lg border p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <Skeleton className="h-5 w-48" />
-                <Skeleton className="h-4 w-96 mt-1.5" />
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1.5">
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-96" />
+                </div>
+                <Skeleton className="h-10 w-40" />
               </div>
-              <Skeleton className="h-10 w-40" />
-            </div>
+            </CardHeader>
+            <CardContent>
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={i} className="h-32 w-full" />
               ))}
             </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </CCRPageWrapper>
     );
@@ -997,13 +1009,14 @@ export default function VisualizarSessaoPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Card de Informações da Sessão */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg border p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="font-semibold">Informações da Sessão</h3>
-                  <p className="text-sm text-muted-foreground mt-1.5">Detalhes e horários da sessão</p>
-                </div>
-                <div className="flex items-center gap-2">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1.5">
+                    <CardTitle>Informações da Sessão</CardTitle>
+                    <CardDescription>Detalhes e horários da sessão</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
                   <TooltipWrapper content="Gerenciar publicações">
                     <Button
                       variant="outline"
@@ -1070,9 +1083,10 @@ export default function VisualizarSessaoPage() {
                     </Button>
                   )}
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Número da Pauta</label>
                   <p className="text-sm">{session.sessionNumber}</p>
@@ -1122,19 +1136,21 @@ export default function VisualizarSessaoPage() {
                   </p>
                 </div>
               </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Card de Conselheiros Participantes */}
           <div>
-            <div className="bg-white rounded-lg border p-6 h-full">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="font-semibold">Conselheiros Participantes</h3>
-                  <p className="text-sm text-muted-foreground mt-1.5">
-                    {session.members.length} {session.members.length === 1 ? 'participante' : 'participantes'}
-                  </p>
-                </div>
+            <Card className="h-full">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1.5">
+                    <CardTitle>Conselheiros Participantes</CardTitle>
+                    <CardDescription>
+                      {session.members.length} {session.members.length === 1 ? 'participante' : 'participantes'}
+                    </CardDescription>
+                  </div>
                 <TooltipWrapper content="Editar membros participantes">
                   <Button
                     variant="outline"
@@ -1145,9 +1161,9 @@ export default function VisualizarSessaoPage() {
                     <Edit className="h-4 w-4" />
                   </Button>
                 </TooltipWrapper>
-              </div>
-
-              <div>
+                </div>
+              </CardHeader>
+              <CardContent>
                 <p className="text-sm">
                   {(() => {
                     const sortedMembers = session.members
@@ -1163,43 +1179,50 @@ export default function VisualizarSessaoPage() {
                     return `${allButLast} e ${last}`;
                   })()}
                 </p>
-              </div>
 
-              {session.observations && (
-                <div className="mt-6 pt-6 border-t">
-                  <label className="block text-sm font-medium mb-1.5">Observações</label>
-                  <p className="text-sm text-muted-foreground">{session.observations}</p>
-                </div>
-              )}
-            </div>
+                {session.observations && (
+                  <div className="mt-6 pt-6 border-t">
+                    <label className="block text-sm font-medium mb-1.5">Observações</label>
+                    <p className="text-sm text-muted-foreground">{session.observations}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
 
         {/* Card de Assuntos Administrativos */}
         {session.administrativeMatters && (
-          <div className="bg-white rounded-lg border p-6">
-            <div className="mb-4">
-              <h3 className="font-semibold">Assuntos Administrativos</h3>
-              <p className="text-sm text-muted-foreground mt-1.5">
-                Assuntos administrativos discutidos durante a sessão
-              </p>
-            </div>
+          <Card>
+            <CardHeader>
+              <div className="space-y-1.5">
+                <CardTitle>Assuntos Administrativos</CardTitle>
+                <CardDescription>
+                  Assuntos administrativos discutidos durante a sessão
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm whitespace-pre-wrap">{session.administrativeMatters}</p>
             </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Card de Progresso do Julgamento */}
         {session.resources.length > 0 && (
-          <div className="bg-white rounded-lg border p-6">
-            <div className="mb-6">
-              <h3 className="font-semibold">Progresso do Julgamento</h3>
-              <p className="text-sm text-muted-foreground mt-1.5">
-                {progressStats.julgados} de {totalProcesses} processos julgados (
-                {totalProcesses > 0 ? Math.round((progressStats.julgados / totalProcesses) * 100) : 0}%)
-              </p>
-            </div>
+          <Card>
+            <CardHeader>
+              <div className="space-y-1.5">
+                <CardTitle>Progresso do Julgamento</CardTitle>
+                <CardDescription>
+                  {progressStats.julgados} de {totalProcesses} processos julgados (
+                  {totalProcesses > 0 ? Math.round((progressStats.julgados / totalProcesses) * 100) : 0}%)
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
 
             <div className="grid grid-cols-5 gap-6 text-center">
               <div>
@@ -1223,18 +1246,20 @@ export default function VisualizarSessaoPage() {
                 <p className="text-sm text-muted-foreground mt-1.5">Julgados</p>
               </div>
             </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Card de Processos para Julgamento */}
-        <div className="bg-white rounded-lg border p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="font-semibold">Processos para Julgamento</h3>
-              <p className="text-sm text-muted-foreground mt-1.5">
-                Lista de processos incluídos nesta sessão ordenados por ordem de julgamento
-              </p>
-            </div>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1.5">
+                <CardTitle>Processos para Julgamento</CardTitle>
+                <CardDescription>
+                  Lista de processos incluídos nesta sessão ordenados por ordem de julgamento
+                </CardDescription>
+              </div>
             {canAddRemoveProcesses && (
               <Button
                 onClick={() => router.push(`/ccr/sessoes/${session.id}/adicionar-processo`)}
@@ -1244,8 +1269,9 @@ export default function VisualizarSessaoPage() {
                 Adicionar Processo
               </Button>
             )}
-          </div>
-
+            </div>
+          </CardHeader>
+          <CardContent>
           {session.resources.length === 0 ? (
             <div className="flex h-[200px] items-center justify-center rounded-lg border border-dashed">
               <div className="text-center">
@@ -1321,7 +1347,8 @@ export default function VisualizarSessaoPage() {
               </SortableContext>
             </DndContext>
           )}
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Modal de Publicação da Pauta */}
         {(showPublishModal || isModalClosing) && (

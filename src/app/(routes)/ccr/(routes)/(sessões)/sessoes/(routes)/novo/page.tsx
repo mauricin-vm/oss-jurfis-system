@@ -14,10 +14,12 @@ export default function NovaSessaoPage() {
     <CCRPageWrapper title="Nova Sessão" breadcrumbs={breadcrumbs}>
       <Card>
         <CardHeader>
-          <CardTitle>Cadastrar Sessão</CardTitle>
-          <CardDescription>
-            Preencha as informações da nova sessão.
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Cadastrar Sessão</CardTitle>
+            <CardDescription>
+              Preencha as informações da nova sessão.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <SessionForm />

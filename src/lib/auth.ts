@@ -97,7 +97,7 @@ export const authOptions: NextAuthOptions = {
           ...session,
           user: {
             ...session.user,
-            id: token.id,
+            id: dbUser.id, // Usar o ID do banco de dados ao invés do token
             email: dbUser.email,
             name: dbUser.name,
             role: orgMember.role,

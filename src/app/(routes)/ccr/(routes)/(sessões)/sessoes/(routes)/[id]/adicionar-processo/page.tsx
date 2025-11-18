@@ -77,6 +77,7 @@ interface Authority {
 
 interface Resource {
   id: string;
+  resourceNumber: string;
   processNumber: string;
   processName: string | null;
   year: number;
@@ -289,12 +290,15 @@ export default function AdicionarProcessoPage() {
         {/* Card de Busca */}
         <Card>
           <CardHeader>
-            <CardTitle>Adicionar Processo em Pauta</CardTitle>
-            <CardDescription>
-              Digite o número do recurso, número do processo, número do protocolo ou razão social.
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Adicionar Processo em Pauta</CardTitle>
+              <CardDescription>
+                Digite o número do recurso, número do processo, número do protocolo ou razão social.
+              </CardDescription>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent>
+            <div className="space-y-4">
             <div className="flex gap-2">
               <Input
                 placeholder="Ex: XXXX/YYYY, NNNN/YYYY-DD..."
@@ -337,7 +341,7 @@ export default function AdicionarProcessoPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <h4 className="font-semibold">
-                              {resource.processNumber}
+                              {resource.resourceNumber}
                             </h4>
                             <Badge
                               variant="secondary"
@@ -382,6 +386,7 @@ export default function AdicionarProcessoPage() {
                 </div>
               </div>
             )}
+            </div>
           </CardContent>
         </Card>
 
@@ -390,29 +395,28 @@ export default function AdicionarProcessoPage() {
           <>
             <Card>
               <CardHeader>
-                <CardTitle>Detalhes do Processo</CardTitle>
-                <CardDescription>
-                  Informações completas do processo selecionado.
-                </CardDescription>
+                <div className="space-y-1.5">
+                  <CardTitle>Detalhes do Processo</CardTitle>
+                  <CardDescription>
+                    Informações completas do processo selecionado.
+                  </CardDescription>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent>
+                <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-0">
-                    <label className="block text-sm font-medium mb-1.5">
-                      Número do Recurso
-                    </label>
-                    <Link
-                      href={`/ccr/recursos/${selectedResource.id}`}
-                      target="_blank"
-                      className="text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline"
-                    >
-                      {selectedResource.processNumber}
-                    </Link>
+                    <label className="block text-sm font-medium mb-1.5">Número do Processo</label>
+                    <p className="text-sm">
+                      <Link
+                        href={`/ccr/recursos/${selectedResource.id}`}
+                        target="_blank"
+                        className="font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                      >{selectedResource.processNumber}</Link>
+                    </p>
                   </div>
                   <div className="space-y-0">
-                    <label className="block text-sm font-medium mb-1.5">
-                      Status
-                    </label>
+                    <label className="block text-sm font-medium mb-1.5">Status</label>
                     <Badge
                       variant="secondary"
                       className={cn(
@@ -423,11 +427,13 @@ export default function AdicionarProcessoPage() {
                       {getResourceStatusLabel(selectedResource.status)}
                     </Badge>
                   </div>
+                  <div className="space-y-0">
+                    <label className="block text-sm font-medium mb-1.5">Número do Recurso</label>
+                    <p className="text-sm">{selectedResource.resourceNumber}</p>
+                  </div>
                   {selectedResource.processName && (
                     <div className="space-y-0">
-                      <label className="block text-sm font-medium mb-1.5">
-                        Razão Social
-                      </label>
+                      <label className="block text-sm font-medium mb-1.5">Razão Social</label>
                       <p className="text-sm">{selectedResource.processName}</p>
                     </div>
                   )}
@@ -436,9 +442,7 @@ export default function AdicionarProcessoPage() {
                 {/* Assuntos */}
                 {selectedResource.subjects && selectedResource.subjects.length > 0 && (
                   <div className="space-y-0">
-                    <label className="block text-sm font-medium mb-1.5">
-                      Assuntos
-                    </label>
+                    <label className="block text-sm font-medium mb-1.5">Assuntos</label>
                     <div className="flex flex-wrap gap-2">
                       {selectedResource.subjects.map((subject) => (
                         <Badge
@@ -456,16 +460,19 @@ export default function AdicionarProcessoPage() {
                 {/* Partes */}
                 {selectedResource.parts && selectedResource.parts.length > 0 && (
                   <div className="space-y-0">
-                    <label className="block text-sm font-medium mb-1.5">
-                      Partes
-                    </label>
+                    <label className="block text-sm font-medium mb-1.5">Partes</label>
                     <p className="text-sm">
-                      {selectedResource.parts.map((part, idx) => (
-                        <span key={part.id}>
-                          {part.name}
-                          {idx < selectedResource.parts.length - 1 && ', '}
-                        </span>
-                      ))}
+                      {(() => {
+                        const parts = [...selectedResource.parts]
+                          .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+                        return parts.map((part, idx) => (
+                          <span key={part.id}>
+                            {part.name}
+                            {idx === parts.length - 2 ? ' e ' : idx < parts.length - 1 ? ', ' : ''}
+                          </span>
+                        ));
+                      })()}
                     </p>
                   </div>
                 )}
@@ -473,16 +480,19 @@ export default function AdicionarProcessoPage() {
                 {/* Autoridades */}
                 {selectedResource.authorities && selectedResource.authorities.length > 0 && (
                   <div className="space-y-0">
-                    <label className="block text-sm font-medium mb-1.5">
-                      Autoridades
-                    </label>
+                    <label className="block text-sm font-medium mb-1.5">Autoridades</label>
                     <p className="text-sm">
-                      {selectedResource.authorities.map((authority, idx) => (
-                        <span key={authority.id}>
-                          {authority.authorityRegistered.name} ({authorityTypeLabels[authority.type] || authority.type})
-                          {idx < selectedResource.authorities.length - 1 && ', '}
-                        </span>
-                      ))}
+                      {(() => {
+                        const authorities = [...selectedResource.authorities]
+                          .sort((a, b) => a.authorityRegistered.name.localeCompare(b.authorityRegistered.name, 'pt-BR'));
+
+                        return authorities.map((authority, idx) => (
+                          <span key={authority.id}>
+                            {authority.authorityRegistered.name} ({authorityTypeLabels[authority.type] || authority.type})
+                            {idx === authorities.length - 2 ? ' e ' : idx < authorities.length - 1 ? ', ' : ''}
+                          </span>
+                        ));
+                      })()}
                     </p>
                   </div>
                 )}
@@ -490,9 +500,7 @@ export default function AdicionarProcessoPage() {
                 {/* Distribuições Anteriores */}
                 {selectedResource.distributionInfo && (selectedResource.distributionInfo.relator || selectedResource.distributionInfo.revisores.length > 0) && (
                   <div className="space-y-0">
-                    <label className="block text-sm font-medium mb-1.5">
-                      Distribuições Anteriores
-                    </label>
+                    <label className="block text-sm font-medium mb-1.5">Distribuições Anteriores</label>
                     <div className="space-y-2">
                       {selectedResource.distributionInfo.relator && (
                         <div className="flex items-center gap-3 text-sm bg-gray-50 p-3 rounded-lg border border-gray-200">
@@ -530,9 +538,7 @@ export default function AdicionarProcessoPage() {
                 {/* Histórico de Sessões */}
                 {selectedResource.sessions && selectedResource.sessions.length > 0 && (
                   <div className="space-y-0">
-                    <label className="block text-sm font-medium mb-1.5">
-                      Histórico de Sessões
-                    </label>
+                    <label className="block text-sm font-medium mb-1.5">Histórico de Sessões</label>
                     <div className="space-y-2">
                       {selectedResource.sessions.map((sessionHistory) => (
                         <div
@@ -559,22 +565,24 @@ export default function AdicionarProcessoPage() {
                     </div>
                   </div>
                 )}
+                </div>
               </CardContent>
             </Card>
 
             {/* Card de Configuração */}
             <Card>
               <CardHeader>
-                <CardTitle>Configurar Distribuição</CardTitle>
-                <CardDescription>
-                  Selecione o membro a ser distribuído o processo.
-                </CardDescription>
+                <div className="space-y-1.5">
+                  <CardTitle>Configurar Distribuição</CardTitle>
+                  <CardDescription>
+                    Selecione o membro a ser distribuído o processo.
+                  </CardDescription>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent>
+                <div className="space-y-4">
                 <div className="space-y-0">
-                  <label className="block text-sm font-medium mb-1.5">
-                    Membro <span className="text-red-500">*</span>
-                  </label>
+                  <label className="block text-sm font-medium mb-1.5">Membro <span className="text-red-500">*</span></label>
                   {members.length === 0 ? (
                     <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
                       Nenhum membro cadastrado nesta sessão. Configure os membros na página de detalhes da sessão.
@@ -615,6 +623,7 @@ export default function AdicionarProcessoPage() {
                     {adding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {adding ? 'Adicionando...' : 'Adicionar à Pauta'}
                   </Button>
+                </div>
                 </div>
               </CardContent>
             </Card>

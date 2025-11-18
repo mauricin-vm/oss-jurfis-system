@@ -21,6 +21,18 @@ export async function POST(
       );
     }
 
+    // Verificar se o usuário existe no banco de dados
+    const user = await prismadb.user.findUnique({
+      where: { id: session.user.id }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Usuário não encontrado' },
+        { status: 404 }
+      );
+    }
+
     const { publicationNumber, publicationDate } = await req.json();
 
     if (!publicationNumber || !publicationDate) {

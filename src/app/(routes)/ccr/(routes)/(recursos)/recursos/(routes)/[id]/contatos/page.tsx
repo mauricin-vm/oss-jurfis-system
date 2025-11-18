@@ -303,10 +303,12 @@ export default function ContatosPage() {
       <CCRPageWrapper title="Gerenciar Contatos" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <CardTitle>Contatos das Partes</CardTitle>
-            <CardDescription>
-              Gerencie os contatos (telefones e emails) das partes envolvidas no processo.
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Contatos das Partes</CardTitle>
+              <CardDescription>
+                Gerencie os contatos (telefones e emails) das partes envolvidas no processo.
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -357,10 +359,12 @@ export default function ContatosPage() {
     <CCRPageWrapper title="Gerenciar Contatos" breadcrumbs={breadcrumbs}>
       <Card>
         <CardHeader>
-          <CardTitle>Contatos das Partes</CardTitle>
-          <CardDescription>
-            Gerencie os contatos (telefones e emails) das partes envolvidas no processo.
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Contatos das Partes</CardTitle>
+            <CardDescription>
+              Gerencie os contatos (telefones e emails) das partes envolvidas no processo.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">

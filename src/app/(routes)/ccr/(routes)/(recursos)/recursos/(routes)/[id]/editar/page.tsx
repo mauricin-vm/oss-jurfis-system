@@ -57,10 +57,12 @@ export default function EditarRecursoPage() {
       <CCRPageWrapper title="Editar Recurso" breadcrumbs={breadcrumbs}>
         <Card>
           <CardHeader>
-            <CardTitle>Editar Recurso</CardTitle>
-            <CardDescription>
-              Atualize o status, tipo e informações gerais do recurso
-            </CardDescription>
+            <div className="space-y-1.5">
+              <CardTitle>Editar Recurso</CardTitle>
+              <CardDescription>
+                Atualize o status, tipo e informações gerais do recurso
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -129,10 +131,12 @@ export default function EditarRecursoPage() {
     <CCRPageWrapper title="Editar Recurso" breadcrumbs={breadcrumbs}>
       <Card>
         <CardHeader>
-          <CardTitle>Editar Recurso</CardTitle>
-          <CardDescription>
-            Atualize o status, tipo e informações gerais do recurso
-          </CardDescription>
+          <div className="space-y-1.5">
+            <CardTitle>Editar Recurso</CardTitle>
+            <CardDescription>
+              Atualize o status, tipo e informações gerais do recurso
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <ResourceForm initialData={resource} />
