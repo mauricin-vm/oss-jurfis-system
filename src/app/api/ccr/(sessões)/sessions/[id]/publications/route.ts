@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import prismadb from '@/lib/prismadb';
 
 export async function GET(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -37,6 +37,11 @@ export async function GET(
             id: true,
             resourceNumber: true,
             processNumber: true,
+          },
+        },
+        sessionSnapshots: {
+          orderBy: {
+            order: 'asc',
           },
         },
       },

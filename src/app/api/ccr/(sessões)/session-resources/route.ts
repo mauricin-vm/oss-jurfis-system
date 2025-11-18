@@ -3,6 +3,94 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prismadb from '@/lib/prismadb';
 
+/**
+ * Verifica se a pauta atual tem os mesmos processos e distribuições da última publicação
+ * (independente da ordem)
+ * Retorna true se tiver os mesmos processos com mesmas distribuições, false caso contrário
+ */
+async function isAgendaEqualToLastPublication(sessionId: string): Promise<boolean> {
+  // Buscar a última publicação da sessão
+  const lastPublication = await prismadb.publication.findFirst({
+    where: {
+      sessionId,
+      type: 'SESSAO'
+    },
+    orderBy: {
+      createdAt: 'desc'
+    },
+    include: {
+      sessionSnapshots: true
+    }
+  });
+
+  if (!lastPublication || lastPublication.sessionSnapshots.length === 0) {
+    return false;
+  }
+
+  // Buscar recursos atuais da sessão com suas distribuições
+  const currentResources = await prismadb.sessionResource.findMany({
+    where: {
+      sessionId
+    },
+    select: {
+      resourceId: true
+    }
+  });
+
+  // Buscar distribuições atuais da sessão
+  const currentDistributions = await prismadb.sessionDistribution.findMany({
+    where: {
+      sessionId,
+      isActive: true
+    },
+    select: {
+      resourceId: true,
+      distributedToId: true
+    }
+  });
+
+  // Comparar: mesmo número de processos
+  if (currentResources.length !== lastPublication.sessionSnapshots.length) {
+    return false;
+  }
+
+  // Criar mapa de resourceId -> distributedToId para a publicação
+  const publishedDistributionMap = new Map(
+    lastPublication.sessionSnapshots.map(s => [s.resourceId, s.distributedToId])
+  );
+
+  // Criar mapa de resourceId -> distributedToId para o estado atual
+  const currentDistributionMap = new Map(
+    currentDistributions.map(d => [d.resourceId, d.distributedToId])
+  );
+
+  // Verificar se todos os processos atuais estão na publicação
+  for (const resource of currentResources) {
+    const publishedDistributedTo = publishedDistributionMap.get(resource.resourceId);
+    const currentDistributedTo = currentDistributionMap.get(resource.resourceId);
+
+    // Se processo não estava na publicação, pauta mudou
+    if (!publishedDistributedTo) {
+      return false;
+    }
+
+    // Se distribuição mudou, pauta mudou
+    if (publishedDistributedTo !== currentDistributedTo) {
+      return false;
+    }
+  }
+
+  // Verificar se há processos na publicação que não estão mais na pauta atual
+  const currentResourceIds = new Set(currentResources.map(r => r.resourceId));
+  for (const snapshot of lastPublication.sessionSnapshots) {
+    if (!currentResourceIds.has(snapshot.resourceId)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -106,7 +194,7 @@ export async function POST(req: Request) {
             isActive: true,
           },
           include: {
-            member: true,
+            firstDistribution: true,
           },
         },
       },
@@ -150,6 +238,34 @@ export async function POST(req: Request) {
       finalOrder = lastResource ? lastResource.order + 1 : 1;
     }
 
+    // Verificar se este processo estava na última publicação com a mesma distribuição
+    const lastPublication = await prismadb.publication.findFirst({
+      where: {
+        sessionId,
+        type: 'SESSAO'
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      include: {
+        sessionSnapshots: {
+          where: {
+            resourceId
+          }
+        }
+      }
+    });
+
+    // Se estava na publicação com a mesma distribuição, não marcar como novo
+    let addedAfterLastPublication = true;
+    if (lastPublication && lastPublication.sessionSnapshots.length > 0) {
+      const snapshot = lastPublication.sessionSnapshots[0];
+      // Verifica se a distribuição é a mesma (mesmo membro)
+      if (snapshot.distributedToId === memberId) {
+        addedAfterLastPublication = false;
+      }
+    }
+
     // Criar SessionResource
     const sessionResource = await prismadb.sessionResource.create({
       data: {
@@ -158,6 +274,7 @@ export async function POST(req: Request) {
         specificPresidentId: null, // Será preenchido no resultado se houver mudança de presidente
         order: finalOrder,
         status: 'EM_PAUTA',
+        addedAfterLastPublication,
       },
       include: {
         session: {
@@ -243,7 +360,7 @@ export async function POST(req: Request) {
       data: { status: 'JULGAMENTO' },
     });
 
-    // Verificar se há publicações da pauta
+    // Verificar se há publicações da pauta e ajustar status
     const hasPublications = await prismadb.publication.count({
       where: {
         sessionId,
@@ -251,11 +368,14 @@ export async function POST(req: Request) {
       }
     });
 
-    // Se há publicações, mudar status da sessão para PUBLICACAO (precisa republicar)
     if (hasPublications > 0) {
+      // Verificar se a pauta atual está igual à última publicação
+      const isEqual = await isAgendaEqualToLastPublication(sessionId);
+
+      // Se estiver igual, status = PENDENTE; se diferente, status = PUBLICACAO
       await prismadb.session.update({
         where: { id: sessionId },
-        data: { status: 'PUBLICACAO' }
+        data: { status: isEqual ? 'PENDENTE' : 'PUBLICACAO' }
       });
     }
 

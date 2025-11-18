@@ -36,6 +36,9 @@ export async function GET(
           },
         },
         resources: {
+          orderBy: {
+            order: 'asc',
+          },
           include: {
             resource: {
               include: {
@@ -47,6 +50,15 @@ export async function GET(
                 id: true,
                 name: true,
                 role: true,
+              },
+            },
+            attendances: {
+              include: {
+                part: {
+                  select: {
+                    name: true,
+                  },
+                },
               },
             },
             judgment: {
@@ -121,7 +133,14 @@ export async function GET(
             isActive: true,
           },
           include: {
-            member: {
+            resource: {
+              select: {
+                id: true,
+                resourceNumber: true,
+                processNumber: true,
+              },
+            },
+            firstDistribution: {
               select: {
                 id: true,
                 name: true,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import prismadb from '@/lib/prismadb';
 
 /**
  * POST /api/ccr/sessions/[id]/complete
@@ -9,7 +9,7 @@ import { prisma } from '@/lib/prisma';
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -21,9 +21,12 @@ export async function POST(
       );
     }
 
+    // Await params
+    const { id } = await params;
+
     // Buscar sessão
-    const sessionData = await prisma.session.findUnique({
-      where: { id: params.id },
+    const sessionData = await prismadb.session.findUnique({
+      where: { id },
       include: {
         resources: true
       }
@@ -60,8 +63,8 @@ export async function POST(
     }
 
     // Atualizar status da sessão para CONCLUIDA
-    const updatedSession = await prisma.session.update({
-      where: { id: params.id },
+    const updatedSession = await prismadb.session.update({
+      where: { id },
       data: {
         status: 'CONCLUIDA'
       }

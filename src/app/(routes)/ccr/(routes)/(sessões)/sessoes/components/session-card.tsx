@@ -77,8 +77,8 @@ const resourceStatusLabels: Record<string, string> = {
 const resourceStatusColors: Record<string, string> = {
   EM_PAUTA: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
   SUSPENSO: 'bg-amber-100 text-amber-700 hover:bg-amber-100',
-  DILIGENCIA: 'bg-violet-100 text-violet-700 hover:bg-violet-100',
-  PEDIDO_VISTA: 'bg-orange-100 text-orange-700 hover:bg-orange-100',
+  DILIGENCIA: 'bg-cyan-100 text-cyan-700 hover:bg-cyan-100',
+  PEDIDO_VISTA: 'bg-rose-100 text-rose-700 hover:bg-rose-100',
   JULGADO: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100',
 };
 

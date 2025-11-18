@@ -297,7 +297,7 @@ export default function AdicionarProcessoPage() {
           <CardContent className="space-y-6">
             <div className="flex gap-2">
               <Input
-                placeholder="Ex: 0001/2025, 52275/2024-89, 001/01-2025, razão social..."
+                placeholder="Ex: XXXX/YYYY, NNNN/YYYY-DD..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => {

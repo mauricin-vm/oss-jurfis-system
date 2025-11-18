@@ -171,6 +171,14 @@ export function SessionMembersForm({ sessionId, onSessionLoad }: SessionMembersF
 
       if (!response.ok) {
         const error = await response.text();
+
+        // Erro de validação (400) - esperado, não logar no console
+        if (response.status === 400) {
+          toast.error(error || 'Erro ao salvar participantes');
+          return;
+        }
+
+        // Outros erros - logar no console
         throw new Error(error || 'Erro ao salvar participantes');
       }
 

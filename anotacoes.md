@@ -19,7 +19,11 @@
 - permitir ou não alterar número do processo (admin; ver tabelas afetadas)
 
 
-- fazer status do protocolos na página de protocolos ter o mesmo padrão da página de tramitações
-
 
 - verificações: padrão de cores e estrutura; espaçamento; input e select (borda, ring e accent); skeleton; tooltip
+
+
+- na página de presenças no julgamento, no navegador superior (página que estamos), colocar o n. da sessão na parte de Sessão
+
+
+

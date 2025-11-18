@@ -157,7 +157,7 @@ export async function POST(req: Request) {
         startTime: startTime || null,
         endTime: endTime || null,
         observations: observations || null,
-        status: 'PENDENTE',
+        status: 'PUBLICACAO',
         presidentId: presidentId || null,
         createdBy: session.user.id,
       },

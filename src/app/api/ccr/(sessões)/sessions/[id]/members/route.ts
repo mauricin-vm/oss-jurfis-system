@@ -22,13 +22,64 @@ export async function PUT(
       return new NextResponse('memberIds deve ser um array', { status: 400 });
     }
 
-    // Verificar se a sessão existe
+    // Verificar se a sessão existe e buscar membros atuais
     const existingSession = await prismadb.session.findUnique({
       where: { id },
+      include: {
+        members: true
+      }
     });
 
     if (!existingSession) {
       return new NextResponse('Sessão não encontrada', { status: 404 });
+    }
+
+    // Identificar membros que estão sendo removidos
+    const currentMemberIds = existingSession.members.map(m => m.memberId);
+    const membersBeingRemoved = currentMemberIds.filter(
+      currentId => !memberIds.includes(currentId)
+    );
+
+    // Verificar se algum membro sendo removido tem processos distribuídos
+    if (membersBeingRemoved.length > 0) {
+      const distributionsForRemovedMembers = await prismadb.sessionDistribution.findMany({
+        where: {
+          sessionId: id,
+          isActive: true,
+          distributedToId: {
+            in: membersBeingRemoved
+          }
+        },
+        include: {
+          resource: {
+            select: {
+              processNumber: true
+            }
+          }
+        }
+      });
+
+      if (distributionsForRemovedMembers.length > 0) {
+        // Buscar nomes dos membros para mensagem mais clara
+        const membersWithProcesses = await prismadb.member.findMany({
+          where: {
+            id: {
+              in: distributionsForRemovedMembers.map(d => d.distributedToId)
+            }
+          },
+          select: {
+            id: true,
+            name: true
+          }
+        });
+
+        const memberNames = membersWithProcesses.map(m => m.name).join(', ');
+
+        return new NextResponse(
+          `Não é possível remover os seguintes conselheiros pois possuem processos distribuídos na pauta: ${memberNames}`,
+          { status: 400 }
+        );
+      }
     }
 
     // Remover todos os membros existentes

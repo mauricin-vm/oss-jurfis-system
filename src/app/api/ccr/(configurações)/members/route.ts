@@ -31,7 +31,7 @@ export async function GET(req: Request) {
             sessionsAsPresident: true,
             sessionsPresent: true,
             sessionResourcesAsPresident: true,
-            distributions: true,
+            distributionsAsFirst: true,
             votes: true,
           },
         },
@@ -49,7 +49,7 @@ export async function GET(req: Request) {
         member._count.sessionsAsPresident > 0 ||
         member._count.sessionsPresent > 0 ||
         member._count.sessionResourcesAsPresident > 0 ||
-        member._count.distributions > 0 ||
+        member._count.distributionsAsFirst > 0 ||
         member._count.votes > 0,
     }));
 

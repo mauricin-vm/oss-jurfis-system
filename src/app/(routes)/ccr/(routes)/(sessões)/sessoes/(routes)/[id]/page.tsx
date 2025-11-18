@@ -20,12 +20,32 @@ import {
   Newspaper,
   Blinds,
   ClipboardList,
+  GripVertical,
+  UserCheck,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { TooltipWrapper } from '@/components/ui/tooltip-wrapper';
+import { toast } from 'sonner';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface MemberVote {
   id: string;
@@ -86,6 +106,7 @@ interface SessionResource {
   order: number;
   observations: string | null;
   createdAt: Date;
+  addedAfterLastPublication: boolean;
   resource: {
     id: string;
     processNumber: string;
@@ -101,6 +122,15 @@ interface SessionResource {
   } | null;
   judgment: Judgment | null;
   sessionVotingResults: VotingResult[];
+  attendances?: Array<{
+    id: string;
+    partId: string | null;
+    customName: string | null;
+    customRole: string | null;
+    part?: {
+      name: string;
+    } | null;
+  }>;
 }
 
 interface SessionMember {
@@ -114,12 +144,18 @@ interface SessionMember {
 interface SessionDistribution {
   id: string;
   resourceId: string;
-  type: string;
   distributionOrder: number;
-  member: {
+  distributedToId: string;
+  reviewersIds: string[];
+  firstDistribution: {
     id: string;
     name: string;
     role: string;
+  } | null;
+  resource: {
+    id: string;
+    resourceNumber: string;
+    processNumber: string;
   };
 }
 
@@ -197,16 +233,16 @@ const resourceStatusLabels: Record<string, string> = {
 const resourceStatusColors: Record<string, string> = {
   EM_PAUTA: 'bg-blue-50 border-blue-400',
   SUSPENSO: 'bg-amber-50 border-amber-400',
-  DILIGENCIA: 'bg-violet-50 border-violet-400',
-  PEDIDO_VISTA: 'bg-orange-50 border-orange-400',
+  DILIGENCIA: 'bg-cyan-50 border-cyan-400',
+  PEDIDO_VISTA: 'bg-rose-50 border-rose-400',
   JULGADO: 'bg-emerald-50 border-emerald-400',
 };
 
 const resourceStatusBadgeColors: Record<string, string> = {
   EM_PAUTA: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
   SUSPENSO: 'bg-amber-100 text-amber-700 hover:bg-amber-100',
-  DILIGENCIA: 'bg-violet-100 text-violet-700 hover:bg-violet-100',
-  PEDIDO_VISTA: 'bg-orange-100 text-orange-700 hover:bg-orange-100',
+  DILIGENCIA: 'bg-cyan-100 text-cyan-700 hover:bg-cyan-100',
+  PEDIDO_VISTA: 'bg-rose-100 text-rose-700 hover:bg-rose-100',
   JULGADO: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100',
 };
 
@@ -244,6 +280,319 @@ const getDecisionColor = (decisionName: string): string => {
   return 'bg-gray-100 text-gray-800 hover:bg-gray-100';
 };
 
+// Componente de Card Sortable
+interface SortableResourceCardProps {
+  resource: SessionResource;
+  distribution: SessionDistribution | undefined;
+  session: Session;
+  canJudgeProcesses: boolean;
+  canAddRemoveProcesses: boolean;
+  onRemove: () => void;
+  onJudge: () => void;
+  onPresence: () => void;
+}
+
+function SortableResourceCard({
+  resource,
+  distribution,
+  session,
+  canJudgeProcesses,
+  canAddRemoveProcesses,
+  onRemove,
+  onJudge,
+  onPresence,
+}: SortableResourceCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: resource.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "bg-white rounded-lg border p-6",
+        resource.addedAfterLastPublication && "border-l-4 border-l-purple-500"
+      )}
+    >
+      {/* Cabeçalho do Card */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div
+            {...attributes}
+            {...listeners}
+            className={cn(
+              "flex items-center justify-center w-8 h-8 rounded-full font-medium text-sm flex-shrink-0 cursor-grab active:cursor-grabbing transition-colors",
+              resource.attendances && resource.attendances.length > 0
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            )}
+          >
+            {resource.order}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="mb-3">
+              <div>
+                <Link
+                  href={`/ccr/recursos/${resource.resource.id}`}
+                  target="_blank"
+                  className="font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  {resource.resource.processNumber}
+                </Link>
+              </div>
+              {resource.resource.processName && (
+                <div className="text-sm text-muted-foreground">
+                  {resource.resource.processName}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-0.5 text-sm">
+              {distribution?.firstDistribution && (
+                <div>
+                  <span className="font-medium">Relator: </span>
+                  <span className="text-muted-foreground">
+                    {distribution.firstDistribution.name}
+                  </span>
+                </div>
+              )}
+              {distribution && distribution.reviewersIds.length > 0 && (
+                <div>
+                  <span className="font-medium">
+                    {distribution.reviewersIds.length === 1 ? 'Revisor: ' : 'Revisores: '}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {distribution.reviewersIds.map((reviewerId, idx) => {
+                      const reviewer = session.members.find(m => m.member.id === reviewerId)?.member;
+                      return reviewer ? (
+                        <span key={reviewerId}>
+                          {reviewer.name}
+                          {idx < distribution.reviewersIds.length - 1 && ', '}
+                        </span>
+                      ) : null;
+                    })}
+                  </span>
+                </div>
+              )}
+              {distribution && (
+                <div>
+                  <span className="font-medium">Distribuição: </span>
+                  <span className="text-muted-foreground">
+                    {session.members.find(m => m.member.id === distribution.distributedToId)?.member.name || '-'}
+                  </span>
+                </div>
+              )}
+              {resource.attendances && resource.attendances.length > 0 && (
+                <div>
+                  <span className="font-medium">Partes: </span>
+                  <span className="text-muted-foreground">
+                    {(() => {
+                      const names = resource.attendances
+                        .map(att => att.part?.name || att.customName || '')
+                        .filter(name => name);
+
+                      if (names.length === 0) return '';
+                      if (names.length === 1) return names[0];
+                      if (names.length === 2) return `${names[0]} e ${names[1]}`;
+
+                      const allButLast = names.slice(0, -1).join(', ');
+                      const last = names[names.length - 1];
+                      return `${allButLast} e ${last}`;
+                    })()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2 flex-shrink-0">
+          {/* Badge de status - não mostrar para processos Em Pauta */}
+          {resource.status !== 'EM_PAUTA' && (
+            <Badge
+              variant="secondary"
+              className={cn(
+                resourceStatusBadgeColors[resource.status] || 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+              )}
+            >
+              {resourceStatusLabels[resource.status]}
+            </Badge>
+          )}
+
+          {/* Badge de resultado (se houver julgamento) */}
+          {resource.judgment && (
+            <Badge
+              variant="secondary"
+              className={cn(
+                getDecisionColor(resource.judgment.winningVotingResult.decision.name)
+              )}
+            >
+              {resource.judgment.winningVotingResult.decision.name.toUpperCase()}
+            </Badge>
+          )}
+
+          {/* Botão Presença - aparece quando sessão está PENDENTE */}
+          {canJudgeProcesses && resource.status !== 'JULGADO' && (
+            <TooltipWrapper content="Registrar presença de partes">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onPresence}
+                className="cursor-pointer h-9 w-9 p-0"
+              >
+                <UserCheck className="h-4 w-4" />
+              </Button>
+            </TooltipWrapper>
+          )}
+
+          {/* Botão Julgar - aparece quando sessão está PENDENTE e processo ainda não julgado */}
+          {canJudgeProcesses && resource.status !== 'JULGADO' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer h-9"
+              onClick={onJudge}
+            >
+              <Gavel className="h-4 w-4 mr-2" />
+              Julgar
+            </Button>
+          )}
+
+          {/* Botão Remover - aparece quando pode adicionar/remover processos */}
+          {canAddRemoveProcesses && resource.status !== 'JULGADO' && (
+            <TooltipWrapper content="Remover processo da pauta">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onRemove}
+                className="cursor-pointer h-9 w-9 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </TooltipWrapper>
+          )}
+        </div>
+      </div>
+
+      {/* Seção de Ata (só aparece se houver julgamento) */}
+      {resource.judgment && resource.judgment.observations && (
+        <div className="mt-6 pt-6 border-t">
+          <label className="block text-sm font-medium mb-1.5">Ata</label>
+          <p className="text-sm text-muted-foreground">{resource.judgment.observations}</p>
+        </div>
+      )}
+
+      {/* Seção de Votos Registrados (só aparece se houver julgamento) */}
+      {resource.judgment && resource.judgment.winningVotingResult.memberVotes.length > 0 && (
+        <div className="mt-6 pt-6 border-t">
+          <label className="block text-sm font-medium mb-3">Votos Registrados</label>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Coluna: Relatores/Revisores */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Relatores/Revisores</label>
+              <div className="space-y-1.5">
+                {resource.judgment.winningVotingResult.memberVotes
+                  .filter(vote => vote.voteType === 'RELATOR' || vote.voteType === 'REVISOR')
+                  .map(vote => (
+                    <div key={vote.id} className="flex items-center justify-between text-sm">
+                      <div>
+                        <span className="font-medium">{voteTypeLabels[vote.voteType]}: </span>
+                        <span className="text-muted-foreground">{vote.member.name}</span>
+                      </div>
+                      {vote.voteDecision ? (
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            'text-xs',
+                            getDecisionColor(vote.voteDecision.name)
+                          )}
+                        >
+                          {vote.voteDecision.name.toUpperCase()}
+                        </Badge>
+                      ) : vote.votePosition ? (
+                        <span className="text-blue-600 text-xs">
+                          {votePositionLabels[vote.votePosition]}
+                        </span>
+                      ) : null}
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Coluna: Conselheiros */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Conselheiros</label>
+              <div className="text-sm space-y-1.5">
+                {(() => {
+                  // Agrupar conselheiros por decisão
+                  const votantes = resource.judgment!.winningVotingResult.memberVotes
+                    .filter(vote => vote.voteType === 'VOTANTE' || vote.voteType === 'PRESIDENTE');
+
+                  // Agrupar por decisão
+                  const votesByDecision: Record<string, MemberVote[]> = {};
+                  votantes.forEach(vote => {
+                    const decisionName = vote.voteDecision?.name || 'Outros';
+                    if (!votesByDecision[decisionName]) {
+                      votesByDecision[decisionName] = [];
+                    }
+                    votesByDecision[decisionName].push(vote);
+                  });
+
+                  return Object.entries(votesByDecision).map(([decision, votes]) => (
+                    <div key={decision}>
+                      <span className={cn(
+                        'font-medium',
+                        getDecisionColor(decision).includes('green') ? 'text-green-700' :
+                          getDecisionColor(decision).includes('red') ? 'text-red-700' :
+                            getDecisionColor(decision).includes('yellow') ? 'text-yellow-700' :
+                              'text-gray-700'
+                      )}>
+                        {decision.toUpperCase()}:{' '}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {votes.map((v, idx) => (
+                          <span key={v.id}>
+                            {v.member.name}
+                            {idx < votes.length - 1 && ', '}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rodapé com data de registro (só aparece se houver julgamento) */}
+      {resource.judgment && (
+        <div className="mt-6 pt-6 border-t">
+          <p className="text-xs text-muted-foreground">
+            Registrado em {format(new Date(resource.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function VisualizarSessaoPage() {
   const params = useParams();
   const router = useRouter();
@@ -252,17 +601,44 @@ export default function VisualizarSessaoPage() {
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [publishLoading, setPublishLoading] = useState(false);
   const [completeLoading, setCompleteLoading] = useState(false);
+  const [isModalClosing, setIsModalClosing] = useState(false);
+  const [shouldModalAnimate, setShouldModalAnimate] = useState(false);
   const [publishData, setPublishData] = useState({
     publicationNumber: '',
-    publicationDate: '',
-    observations: ''
+    publicationDate: ''
   });
+
+  // Configurar sensors para drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     if (params.id) {
       fetchSession();
     }
   }, [params.id]);
+
+  useEffect(() => {
+    if (showPublishModal) {
+      setIsModalClosing(false);
+      setShouldModalAnimate(false);
+      // Resetar formulário
+      setPublishData({
+        publicationNumber: '',
+        publicationDate: ''
+      });
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setShouldModalAnimate(true);
+        });
+      });
+    }
+  }, [showPublishModal]);
 
   const fetchSession = async () => {
     try {
@@ -310,9 +686,37 @@ export default function VisualizarSessaoPage() {
     return `${hours} ${hours === 1 ? 'hora' : 'horas'} e ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
   };
 
-  const handlePublishAgenda = async () => {
+  const formatPublicationNumber = (value: string) => {
+    // Remove tudo que não é dígito
+    const onlyNumbers = value.replace(/\D/g, '');
+
+    // Formata com separador de milhar
+    if (!onlyNumbers) return '';
+
+    const number = parseInt(onlyNumbers);
+    return number.toLocaleString('pt-BR');
+  };
+
+  const handlePublicationNumberChange = (value: string) => {
+    const formatted = formatPublicationNumber(value);
+    setPublishData({ ...publishData, publicationNumber: formatted });
+  };
+
+  const handleClosePublishModal = () => {
+    if (publishLoading) return; // Não permite fechar enquanto está carregando
+    setIsModalClosing(true);
+    setShouldModalAnimate(false);
+    setTimeout(() => {
+      setShowPublishModal(false);
+      setIsModalClosing(false);
+    }, 200);
+  };
+
+  const handlePublishAgenda = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!publishData.publicationNumber || !publishData.publicationDate) {
-      alert('Número e data da publicação são obrigatórios');
+      toast.error('Número e data da publicação são obrigatórios');
       return;
     }
 
@@ -327,46 +731,111 @@ export default function VisualizarSessaoPage() {
       });
 
       if (response.ok) {
-        setShowPublishModal(false);
-        setPublishData({ publicationNumber: '', publicationDate: '', observations: '' });
+        toast.success('Pauta publicada com sucesso');
+        handleClosePublishModal();
         fetchSession(); // Recarregar dados da sessão
       } else {
         const error = await response.json();
-        alert(error.error || 'Erro ao publicar pauta');
+        toast.error(error.error || 'Erro ao publicar pauta');
       }
     } catch (error) {
       console.error('Error publishing agenda:', error);
-      alert('Erro ao publicar pauta');
+      toast.error('Erro ao publicar pauta');
     } finally {
       setPublishLoading(false);
     }
   };
 
   const handleCompleteSession = async () => {
-    if (!confirm('Tem certeza que deseja concluir esta sessão? Todos os processos devem estar julgados.')) {
+    toast.warning('Tem certeza que deseja concluir esta sessão? Todos os processos devem estar julgados.', {
+      duration: 10000,
+      action: {
+        label: 'Confirmar',
+        onClick: async () => {
+          try {
+            setCompleteLoading(true);
+            const response = await fetch(`/api/ccr/sessions/${params.id}/complete`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            });
+
+            if (response.ok) {
+              toast.success('Sessão concluída com sucesso');
+              fetchSession(); // Recarregar dados da sessão
+            } else {
+              const error = await response.json();
+              toast.error(error.error || 'Erro ao concluir sessão');
+            }
+          } catch (error) {
+            console.error('Error completing session:', error);
+            toast.error('Erro ao concluir sessão');
+          } finally {
+            setCompleteLoading(false);
+          }
+        },
+      },
+      cancel: {
+        label: 'Cancelar',
+        onClick: () => {
+          setCompleteLoading(false);
+        },
+      },
+    });
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id || !session) {
       return;
     }
 
+    const oldIndex = session.resources.findIndex((r) => r.id === active.id);
+    const newIndex = session.resources.findIndex((r) => r.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // Atualizar ordem localmente (otimistic update)
+    const newResources = arrayMove(session.resources, oldIndex, newIndex);
+    const reorderedResources = newResources.map((resource, index) => ({
+      ...resource,
+      order: index + 1,
+    }));
+
+    setSession({
+      ...session,
+      resources: reorderedResources,
+    });
+
+    // Atualizar no backend
     try {
-      setCompleteLoading(true);
-      const response = await fetch(`/api/ccr/sessions/${params.id}/complete`, {
-        method: 'POST',
+      const response = await fetch(`/api/ccr/sessions/${params.id}/reorder-resources`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({
+          resourceOrders: reorderedResources.map((r) => ({
+            id: r.id,
+            order: r.order,
+          })),
+        }),
       });
 
-      if (response.ok) {
-        fetchSession(); // Recarregar dados da sessão
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Erro ao concluir sessão');
+      if (!response.ok) {
+        // Se falhar, recarregar dados originais
+        fetchSession();
+        toast.error('Erro ao reordenar processos');
       }
     } catch (error) {
-      console.error('Error completing session:', error);
-      alert('Erro ao concluir sessão');
-    } finally {
-      setCompleteLoading(false);
+      console.error('Error reordering resources:', error);
+      // Se falhar, recarregar dados originais
+      fetchSession();
+      toast.error('Erro ao reordenar processos');
     }
   };
 
@@ -680,18 +1149,19 @@ export default function VisualizarSessaoPage() {
 
               <div>
                 <p className="text-sm">
-                  {session.members
-                    .sort((a, b) => a.member.name.localeCompare(b.member.name))
-                    .map((member, index, array) => {
-                      if (index === array.length - 1 && array.length > 1) {
-                        return ` e ${member.member.name}`;
-                      }
-                      if (index === array.length - 1) {
-                        return member.member.name;
-                      }
-                      return `${member.member.name}, `;
-                    })
-                    .join('')}
+                  {(() => {
+                    const sortedMembers = session.members
+                      .sort((a, b) => a.member.name.localeCompare(b.member.name))
+                      .map(m => m.member.name);
+
+                    if (sortedMembers.length === 0) return '';
+                    if (sortedMembers.length === 1) return sortedMembers[0];
+                    if (sortedMembers.length === 2) return `${sortedMembers[0]} e ${sortedMembers[1]}`;
+
+                    const allButLast = sortedMembers.slice(0, -1).join(', ');
+                    const last = sortedMembers[sortedMembers.length - 1];
+                    return `${allButLast} e ${last}`;
+                  })()}
                 </p>
               </div>
 
@@ -723,37 +1193,37 @@ export default function VisualizarSessaoPage() {
         {/* Card de Progresso do Julgamento */}
         {session.resources.length > 0 && (
           <div className="bg-white rounded-lg border p-6">
-          <div className="mb-6">
-            <h3 className="font-semibold">Progresso do Julgamento</h3>
-            <p className="text-sm text-muted-foreground mt-1.5">
-              {progressStats.julgados} de {totalProcesses} processos julgados (
-              {totalProcesses > 0 ? Math.round((progressStats.julgados / totalProcesses) * 100) : 0}%)
-            </p>
-          </div>
+            <div className="mb-6">
+              <h3 className="font-semibold">Progresso do Julgamento</h3>
+              <p className="text-sm text-muted-foreground mt-1.5">
+                {progressStats.julgados} de {totalProcesses} processos julgados (
+                {totalProcesses > 0 ? Math.round((progressStats.julgados / totalProcesses) * 100) : 0}%)
+              </p>
+            </div>
 
-          <div className="grid grid-cols-5 gap-6 text-center">
-            <div>
-              <div className="text-3xl font-bold text-blue-700">{progressStats.pendentes}</div>
-              <p className="text-sm text-muted-foreground mt-1.5">Pendentes</p>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-amber-700">{progressStats.suspensos}</div>
-              <p className="text-sm text-muted-foreground mt-1.5">Suspensos</p>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-violet-700">{progressStats.diligencias}</div>
-              <p className="text-sm text-muted-foreground mt-1.5">Diligências</p>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-orange-700">{progressStats.vistas}</div>
-              <p className="text-sm text-muted-foreground mt-1.5">Vistas</p>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-emerald-700">{progressStats.julgados}</div>
-              <p className="text-sm text-muted-foreground mt-1.5">Julgados</p>
+            <div className="grid grid-cols-5 gap-6 text-center">
+              <div>
+                <div className="text-3xl font-bold text-blue-700">{progressStats.pendentes}</div>
+                <p className="text-sm text-muted-foreground mt-1.5">Pendentes</p>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-amber-700">{progressStats.suspensos}</div>
+                <p className="text-sm text-muted-foreground mt-1.5">Suspensos</p>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-cyan-700">{progressStats.diligencias}</div>
+                <p className="text-sm text-muted-foreground mt-1.5">Diligências</p>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-rose-700">{progressStats.vistas}</div>
+                <p className="text-sm text-muted-foreground mt-1.5">Vistas</p>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-emerald-700">{progressStats.julgados}</div>
+                <p className="text-sm text-muted-foreground mt-1.5">Julgados</p>
+              </div>
             </div>
           </div>
-        </div>
         )}
 
         {/* Card de Processos para Julgamento */}
@@ -786,319 +1256,145 @@ export default function VisualizarSessaoPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {session.resources
-                .sort((a, b) => a.order - b.order)
-                .map((resource) => {
-                  // Buscar relator e revisor nas distribuições da sessão
-                  const relator = session.distributions?.find(
-                    d => d.resourceId === resource.resource.id && d.type === 'RELATOR'
-                  );
-                  const revisor = session.distributions?.find(
-                    d => d.resourceId === resource.resource.id && d.type === 'REVISOR'
-                  );
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={session.resources.map((r) => r.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-4">
+                  {session.resources
+                    .sort((a, b) => a.order - b.order)
+                    .map((resource) => {
+                      // Buscar a última distribuição deste recurso nesta sessão
+                      const distribution = session.distributions?.find(
+                        d => d.resourceId === resource.resource.id
+                      );
 
-                  // Determinar cor do card baseada no resultado
-                  const cardBorderColor = resource.judgment
-                    ? getDecisionColor(resource.judgment.winningVotingResult.decision.name).split(' ')[0].replace('bg-', 'border-l-')
-                    : 'border-l-gray-300';
+                      return (
+                        <SortableResourceCard
+                          key={resource.id}
+                          resource={resource}
+                          distribution={distribution}
+                          session={session}
+                          canJudgeProcesses={canJudgeProcesses}
+                          canAddRemoveProcesses={canAddRemoveProcesses}
+                          onRemove={() => {
+                            toast.warning('Tem certeza que deseja remover este processo da pauta?', {
+                              duration: 10000,
+                              action: {
+                                label: 'Confirmar',
+                                onClick: async () => {
+                                  try {
+                                    const response = await fetch(`/api/ccr/session-resources/${resource.id}`, {
+                                      method: 'DELETE',
+                                    });
 
-                  return (
-                    <div
-                      key={resource.id}
-                      className={cn(
-                        'bg-white rounded-lg border-l-4 border p-6',
-                        cardBorderColor
-                      )}
-                    >
-                      {/* Cabeçalho do Card */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-start gap-4 flex-1">
-                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-100 text-green-800 font-semibold text-lg flex-shrink-0">
-                            {resource.order}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="mb-2">
-                              <Link
-                                href={`/ccr/recursos/${resource.resource.id}`}
-                                target="_blank"
-                                className="text-lg font-semibold text-blue-600 hover:text-blue-800 hover:underline"
-                              >
-                                {resource.resource.processNumber}
-                              </Link>
-                              {resource.resource.processName && (
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {resource.resource.processName}
-                                </p>
-                              )}
-                            </div>
-
-                            <div className="space-y-1 text-sm">
-                              {relator && (
-                                <div>
-                                  <span className="font-medium">Relator: </span>
-                                  <Link
-                                    href={`/ccr/membros/${relator.member.id}`}
-                                    target="_blank"
-                                    className="text-blue-600 hover:text-blue-800 hover:underline"
-                                  >
-                                    {relator.member.name}
-                                  </Link>
-                                </div>
-                              )}
-                              {revisor && (
-                                <div>
-                                  <span className="font-medium">Revisor: </span>
-                                  <Link
-                                    href={`/ccr/membros/${revisor.member.id}`}
-                                    target="_blank"
-                                    className="text-blue-600 hover:text-blue-800 hover:underline"
-                                  >
-                                    {revisor.member.name}
-                                  </Link>
-                                </div>
-                              )}
-                              {resource.specificPresident && (
-                                <div>
-                                  <span className="font-medium">Distribuição: </span>
-                                  <span>{resource.specificPresident.name}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-2 flex-shrink-0">
-                          {/* Badge de resultado (se houver julgamento) */}
-                          {resource.judgment && (
-                            <Badge
-                              variant="secondary"
-                              className={cn(
-                                'inline-flex items-center gap-1.5',
-                                getDecisionColor(resource.judgment.winningVotingResult.decision.name)
-                              )}
-                            >
-                              {resource.judgment.winningVotingResult.decision.name.toUpperCase()}
-                            </Badge>
-                          )}
-
-                          {/* Botão Julgar - aparece quando sessão está PENDENTE e processo ainda não julgado */}
-                          {canJudgeProcesses && resource.status !== 'JULGADO' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="cursor-pointer"
-                              onClick={() => router.push(`/ccr/sessoes/${session.id}/processos/${resource.id}/julgar`)}
-                            >
-                              <Gavel className="h-4 w-4 mr-2" />
-                              Julgar
-                            </Button>
-                          )}
-
-                          {/* Botão Remover - aparece quando pode adicionar/remover processos */}
-                          {canAddRemoveProcesses && resource.status !== 'JULGADO' && (
-                            <TooltipWrapper content="Remover processo da pauta">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={async () => {
-                                  if (confirm('Tem certeza que deseja remover este processo da pauta?')) {
-                                    try {
-                                      const response = await fetch(`/api/ccr/session-resources/${resource.id}`, {
-                                        method: 'DELETE',
-                                      });
-                                      if (response.ok) {
-                                        fetchSession();
-                                      } else {
-                                        alert('Erro ao remover processo da pauta');
-                                      }
-                                    } catch (error) {
-                                      console.error('Error removing resource:', error);
-                                      alert('Erro ao remover processo da pauta');
+                                    if (response.ok) {
+                                      toast.success('Processo removido da pauta');
+                                      fetchSession();
+                                    } else {
+                                      const errorText = await response.text();
+                                      toast.error(errorText || 'Erro ao remover processo da pauta');
                                     }
+                                  } catch (error) {
+                                    console.error('Error removing resource:', error);
+                                    toast.error('Erro ao remover processo da pauta');
                                   }
-                                }}
-                                className="cursor-pointer"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </TooltipWrapper>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Seção de Ata (só aparece se houver julgamento) */}
-                      {resource.judgment && resource.judgment.observations && (
-                        <div className="mt-6 pt-6 border-t">
-                          <h4 className="font-semibold mb-2">Ata:</h4>
-                          <p className="text-sm">{resource.judgment.observations}</p>
-                        </div>
-                      )}
-
-                      {/* Seção de Votos Registrados (só aparece se houver julgamento) */}
-                      {resource.judgment && resource.judgment.winningVotingResult.memberVotes.length > 0 && (
-                        <div className="mt-6 pt-6 border-t">
-                          <h4 className="font-semibold mb-4">Votos registrados:</h4>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Coluna: Relatores/Revisores */}
-                            <div>
-                              <h5 className="font-medium text-sm mb-3">Relatores/Revisores</h5>
-                              <div className="space-y-2">
-                                {resource.judgment.winningVotingResult.memberVotes
-                                  .filter(vote => vote.voteType === 'RELATOR' || vote.voteType === 'REVISOR')
-                                  .map(vote => (
-                                    <div key={vote.id} className="flex items-center justify-between text-sm">
-                                      <div>
-                                        <span className="font-medium">{voteTypeLabels[vote.voteType]}</span>
-                                        <span className="ml-1">{vote.member.name}</span>
-                                      </div>
-                                      {vote.voteDecision ? (
-                                        <Badge
-                                          variant="secondary"
-                                          className={cn(
-                                            'text-xs',
-                                            getDecisionColor(vote.voteDecision.name)
-                                          )}
-                                        >
-                                          {vote.voteDecision.name.toUpperCase()}
-                                        </Badge>
-                                      ) : vote.votePosition ? (
-                                        <span className="text-blue-600 text-xs">
-                                          {votePositionLabels[vote.votePosition]}
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                  ))}
-                              </div>
-                            </div>
-
-                            {/* Coluna: Conselheiros */}
-                            <div>
-                              <h5 className="font-medium text-sm mb-3">Conselheiros</h5>
-                              <div className="text-sm">
-                                {(() => {
-                                  // Agrupar conselheiros por decisão
-                                  const votantes = resource.judgment!.winningVotingResult.memberVotes
-                                    .filter(vote => vote.voteType === 'VOTANTE' || vote.voteType === 'PRESIDENTE');
-
-                                  // Agrupar por decisão
-                                  const votesByDecision: Record<string, MemberVote[]> = {};
-                                  votantes.forEach(vote => {
-                                    const decisionName = vote.voteDecision?.name || 'Outros';
-                                    if (!votesByDecision[decisionName]) {
-                                      votesByDecision[decisionName] = [];
-                                    }
-                                    votesByDecision[decisionName].push(vote);
-                                  });
-
-                                  return Object.entries(votesByDecision).map(([decision, votes]) => (
-                                    <div key={decision} className="mb-2">
-                                      <span className={cn(
-                                        'font-semibold',
-                                        getDecisionColor(decision).includes('green') ? 'text-green-700' :
-                                        getDecisionColor(decision).includes('red') ? 'text-red-700' :
-                                        getDecisionColor(decision).includes('yellow') ? 'text-yellow-700' :
-                                        'text-gray-700'
-                                      )}>
-                                        {decision.toUpperCase()}:
-                                      </span>{' '}
-                                      <span>
-                                        {votes.map((v, idx) => (
-                                          <span key={v.id}>
-                                            {v.member.name}
-                                            {idx < votes.length - 1 && ', '}
-                                          </span>
-                                        ))}
-                                      </span>
-                                    </div>
-                                  ));
-                                })()}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Rodapé com data de registro (só aparece se houver julgamento) */}
-                      {resource.judgment && (
-                        <div className="mt-6 pt-6 border-t text-sm text-muted-foreground">
-                          Registrada em {format(new Date(resource.createdAt), "dd/MM/yyyy, HH:mm:ss", { locale: ptBR })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-            </div>
+                                },
+                              },
+                              cancel: {
+                                label: 'Cancelar',
+                                onClick: () => { },
+                              },
+                            });
+                          }}
+                          onJudge={() => router.push(`/ccr/sessoes/${session.id}/processos/${resource.id}/julgar`)}
+                          onPresence={() => router.push(`/ccr/sessoes/${session.id}/processos/${resource.id}/presenca`)}
+                        />
+                      );
+                    })}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
 
         {/* Modal de Publicação da Pauta */}
-        {showPublishModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <h3 className="text-lg font-semibold mb-4">Publicar Pauta</h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Número da Publicação <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={publishData.publicationNumber}
-                    onChange={(e) => setPublishData({ ...publishData, publicationNumber: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="Ex: 001/2024"
-                  />
+        {(showPublishModal || isModalClosing) && (
+          <div
+            className={`fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 pt-16 transition-opacity duration-200 ${isModalClosing ? 'opacity-0' : shouldModalAnimate ? 'opacity-100' : 'opacity-0'}`}
+          >
+            <div
+              className={`bg-white rounded-lg shadow-xl max-w-md w-full transition-all duration-200 ${isModalClosing ? 'scale-95 opacity-0' : shouldModalAnimate ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Publicar Pauta</h2>
+                    <p className="text-sm text-gray-600 mt-1">Informe os dados da publicação da pauta</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClosePublishModal}
+                    disabled={publishLoading}
+                    className="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Data da Publicação <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={publishData.publicationDate}
-                    onChange={(e) => setPublishData({ ...publishData, publicationDate: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
+                <form onSubmit={handlePublishAgenda} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Número da Publicação <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={publishData.publicationNumber}
+                      onChange={(e) => handlePublicationNumberChange(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
+                      placeholder="Ex: 1.000"
+                      disabled={publishLoading}
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Observações
-                  </label>
-                  <textarea
-                    value={publishData.observations}
-                    onChange={(e) => setPublishData({ ...publishData, observations: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    rows={3}
-                    placeholder="Observações sobre a publicação (opcional)"
-                  />
-                </div>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Data da Publicação <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={publishData.publicationDate}
+                      onChange={(e) => setPublishData({ ...publishData, publicationDate: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors"
+                      disabled={publishLoading}
+                    />
+                  </div>
 
-              <div className="flex items-center justify-end gap-3 mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowPublishModal(false);
-                    setPublishData({ publicationNumber: '', publicationDate: '', observations: '' });
-                  }}
-                  disabled={publishLoading}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handlePublishAgenda}
-                  disabled={publishLoading}
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  {publishLoading ? 'Publicando...' : 'Publicar'}
-                </Button>
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={handleClosePublishModal}
+                      disabled={publishLoading}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={publishLoading}
+                      className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {publishLoading ? 'Publicando...' : 'Publicar Pauta'}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>

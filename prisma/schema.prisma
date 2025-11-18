@@ -164,8 +164,9 @@ model Part {
   registrationNumber String? // Número do registro
 
   // Relacionamentos
-  protocols ProtocolPart[] // Protocolos que usam esta parte
-  contacts  Contact[] // Contatos da parte (telefones/emails)
+  protocols   ProtocolPart[] // Protocolos que usam esta parte
+  contacts    Contact[] // Contatos da parte (telefones/emails)
+  attendances SessionResourceAttendance[] // Presenças em julgamentos
 
   // Status
   isActive Boolean @default(true) // Parte ativa (soft delete)
@@ -367,6 +368,9 @@ model Publication {
   sessionId  String?
   session    Session?  @relation(fields: [sessionId], references: [id])
 
+  // Snapshot da pauta (apenas para publicações de sessão)
+  sessionSnapshots PublicationSessionSnapshot[]
+
   createdBy     String
   createdByUser User     @relation("PublicationCreatedBy", fields: [createdBy], references: [id])
   createdAt     DateTime @default(now())
@@ -377,6 +381,36 @@ model Publication {
   @@index([type])
   @@index([publicationDate])
   @@map("CCR_Publication")
+  @@schema("jurfis")
+}
+
+// Snapshot da pauta no momento da publicação
+model PublicationSessionSnapshot {
+  id String @id @default(uuid())
+
+  publicationId String
+  publication   Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  // Dados do processo na pauta
+  resourceId    String
+  processNumber String
+  processName   String?
+  order         Int
+  status        String
+
+  // Dados da distribuição no momento da publicação
+  firstDistributionId   String? // Relator
+  firstDistributionName String?
+  reviewersIds          String[] @default([]) // IDs dos revisores
+  reviewersNames        String[] @default([]) // Nomes dos revisores
+  distributedToId       String // Para quem foi distribuído nesta sessão
+  distributedToName     String
+
+  createdAt DateTime @default(now())
+
+  @@index([publicationId])
+  @@index([resourceId])
+  @@map("CCR_PublicationSessionSnapshot")
   @@schema("jurfis")
 }
 
@@ -582,6 +616,29 @@ model SessionMember {
   @@schema("jurfis")
 }
 
+model SessionResourceAttendance {
+  id String @id @default(uuid())
+
+  sessionResourceId String
+  sessionResource   SessionResource @relation(fields: [sessionResourceId], references: [id], onDelete: Cascade)
+
+  // Pode ser uma parte cadastrada OU uma pessoa não cadastrada
+  partId String? // Opcional - se for uma parte cadastrada do sistema
+  part   Part?   @relation(fields: [partId], references: [id])
+
+  // Campos para pessoas não cadastradas
+  customName String? // Nome da pessoa (se não for parte cadastrada)
+  customRole String? // Tipo (ex: Advogado, Requerente, etc)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionResourceId])
+  @@index([partId])
+  @@map("CCR_SessionResourceAttendance")
+  @@schema("jurfis")
+}
+
 model SessionResource {
   id         String   @id @default(uuid())
   resourceId String
@@ -592,6 +649,9 @@ model SessionResource {
   order  Int // Ordem na pauta
   status SessionResourceStatus // EM_PAUTA, SUSPENSO, DILIGENCIA, PEDIDO_VISTA, JULGADO
 
+  // Flag para indicar se foi adicionado após a última publicação
+  addedAfterLastPublication Boolean @default(true)
+
   // Presidente específico para este julgamento (opcional)
   specificPresidentId String?
   specificPresident   Member? @relation("SessionResourcePresident", fields: [specificPresidentId], references: [id])
@@ -599,6 +659,7 @@ model SessionResource {
   // Relacionamentos
   judgment             SessionJudgment?
   sessionVotingResults SessionVotingResult[]
+  attendances          SessionResourceAttendance[] // Presenças de partes no julgamento
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -617,9 +678,9 @@ model SessionDistribution {
   resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
   // Campos de distribuição
-  firstDistributionId String?  // ID do primeiro membro distribuído (relator)
+  firstDistributionId String? // ID do primeiro membro distribuído (relator)
   firstDistribution   Member?  @relation("DistributionFirstMember", fields: [firstDistributionId], references: [id])
-  distributedToId     String   // ID do membro para quem foi distribuído NESTA sessão
+  distributedToId     String // ID do membro para quem foi distribuído NESTA sessão
   reviewersIds        String[] @default([]) // IDs dos revisores na ordem (acumulativo)
 
   // Informações da distribuição
