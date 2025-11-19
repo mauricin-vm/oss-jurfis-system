@@ -28,7 +28,7 @@ import {
   CheckCircle2,
   Clock,
   Filter,
-  PlayCircle,
+  Newspaper,
   Plus,
   Search,
   ChevronLeft,
@@ -133,8 +133,8 @@ export default function SessoesPage() {
   };
 
   // Calcular estatísticas
+  const publicationCount = sessions.filter((s) => s.status === 'PUBLICACAO').length;
   const pendingCount = sessions.filter((s) => s.status === 'PENDENTE').length;
-  const inProgressCount = sessions.filter((s) => s.status === 'EM_PROGRESSO').length;
   const completedCount = sessions.filter((s) => s.status === 'CONCLUIDA').length;
 
   // Filtrar sessões
@@ -170,8 +170,8 @@ export default function SessoesPage() {
   // Status counts para o filtro
   const statusCounts = {
     all: sessions.length,
+    PUBLICACAO: publicationCount,
     PENDENTE: pendingCount,
-    EM_PROGRESSO: inProgressCount,
     CONCLUIDA: completedCount,
   };
 
@@ -332,11 +332,11 @@ export default function SessoesPage() {
                       <SelectItem value="all" className="cursor-pointer h-9">
                         Todas ({statusCounts.all})
                       </SelectItem>
+                      <SelectItem value="PUBLICACAO" className="cursor-pointer h-9">
+                        Publicação ({statusCounts.PUBLICACAO})
+                      </SelectItem>
                       <SelectItem value="PENDENTE" className="cursor-pointer h-9">
                         Pendentes ({statusCounts.PENDENTE})
-                      </SelectItem>
-                      <SelectItem value="EM_PROGRESSO" className="cursor-pointer h-9">
-                        Em Progresso ({statusCounts.EM_PROGRESSO})
                       </SelectItem>
                       <SelectItem value="CONCLUIDA" className="cursor-pointer h-9">
                         Concluídas ({statusCounts.CONCLUIDA})
@@ -375,16 +375,16 @@ export default function SessoesPage() {
             icon={Calendar}
           />
           <StatCard
-            title="Pendentes"
-            value={pendingCount}
-            description="Aguardando início"
-            icon={Clock}
+            title="Publicação"
+            value={publicationCount}
+            description="Aguardando publicação"
+            icon={Newspaper}
           />
           <StatCard
-            title="Em Progresso"
-            value={inProgressCount}
-            description="Em andamento"
-            icon={PlayCircle}
+            title="Pendente"
+            value={pendingCount}
+            description="Pauta publicada"
+            icon={Clock}
           />
           <StatCard
             title="Concluídas"

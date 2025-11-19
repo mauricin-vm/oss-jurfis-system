@@ -16,7 +16,6 @@ import {
   Ban,
   Clock,
   FileSearch,
-  Gavel,
   ChevronDown,
   ChevronUp,
   Plus,
@@ -26,7 +25,10 @@ import {
   UserCheck,
   Vote,
 } from 'lucide-react';
-import { CompleteVotingModal } from './components/complete-voting-modal';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { getResourceStatusLabel, getResourceStatusColor, type ResourceStatusKey } from '@/app/(routes)/ccr/hooks/resource-status';
+import { VotingCard } from './components/voting-card';
 
 interface Member {
   id: string;
@@ -44,6 +46,11 @@ interface Distribution {
   firstDistribution: Member | null;
   reviewersIds: string[];
   distributedToId: string;
+  session: {
+    id: string;
+    sessionNumber: string;
+    date: Date;
+  };
 }
 
 interface Decision {
@@ -71,6 +78,17 @@ interface Authority {
   };
 }
 
+interface Attendance {
+  id: string;
+  part: {
+    id: string;
+    name: string;
+    role: string;
+  } | null;
+  customName: string | null;
+  customRole: string | null;
+}
+
 interface SessionVote {
   id: string;
   member: Member;
@@ -90,11 +108,13 @@ interface JudgmentData {
     minutesText: string | null;
     diligenceDaysDeadline: number | null;
     viewRequestedBy: Member | null;
+    attendances: Attendance[];
     resource: {
       id: string;
       processNumber: string;
       processName: string | null;
       resourceNumber: string;
+      status: ResourceStatusKey;
       subjects: Subject[];
       authorities: Authority[];
     };
@@ -106,6 +126,7 @@ interface JudgmentData {
     members: SessionMember[];
   };
   distribution: Distribution | null;
+  reviewers: Array<{ id: string; name: string; role: string }>;
   preliminaryDecisions: Decision[];
   meritDecisions: Decision[];
   oficioDecisions: Decision[];
@@ -116,6 +137,17 @@ const authorityTypeLabels: Record<string, string> = {
   JULGADOR_SINGULAR: 'Julgador Singular',
   COORDENADOR: 'Coordenador',
   OUTROS: 'Outros',
+};
+
+const partRoleLabels: Record<string, string> = {
+  REQUERENTE: 'Requerente',
+  PATRONO: 'Patrono',
+  REPRESENTANTE: 'Representante',
+  OUTRO: 'Outro',
+};
+
+const formatPartRole = (role: string): string => {
+  return partRoleLabels[role] || role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 };
 
 const statusLabels: Record<string, { label: string; color: string }> = {
@@ -132,8 +164,6 @@ export default function JulgarProcessoPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState<JudgmentData | null>(null);
-  const [showCompleteVotingModal, setShowCompleteVotingModal] = useState(false);
-  const [selectedVoting, setSelectedVoting] = useState<any>(null);
   const [sessionVotes, setSessionVotes] = useState<SessionVote[]>([]);
   const [sessionVotings, setSessionVotings] = useState<any[]>([]);
   const [groupedVotings, setGroupedVotings] = useState<any[]>([]);
@@ -142,6 +172,7 @@ export default function JulgarProcessoPage() {
   const [viewRequestedMemberId, setViewRequestedMemberId] = useState('');
   const [diligenceDays, setDiligenceDays] = useState('');
   const [minutesText, setMinutesText] = useState('');
+  const [selectedResult, setSelectedResult] = useState<string | null>(null);
 
   useEffect(() => {
     if (params.id && params.resourceId) {
@@ -257,46 +288,6 @@ export default function JulgarProcessoPage() {
     }
   };
 
-  const handleCompleteVoting = async (completionData: {
-    winningMemberId: string;
-    qualityVoteUsed: boolean;
-    qualityVoteMemberId: string | null;
-    finalText: string;
-    totalVotes: number;
-    votesInFavor: number;
-    votesAgainst: number;
-    abstentions: number;
-  }) => {
-    if (!selectedVoting) return;
-
-    try {
-      setSaving(true);
-      const response = await fetch(
-        `/api/ccr/sessions/${params.id}/processos/${params.resourceId}/votings/${selectedVoting.id}/complete`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(completionData),
-        }
-      );
-
-      if (response.ok) {
-        toast.success('Votação concluída com sucesso');
-        await fetchSessionVotings();
-        setShowCompleteVotingModal(false);
-        setSelectedVoting(null);
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Erro ao concluir votação');
-      }
-    } catch (error) {
-      console.error('Error completing voting:', error);
-      toast.error('Erro ao concluir votação');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleUpdateStatus = async (newStatus: string) => {
     try {
       setSaving(true);
@@ -341,10 +332,106 @@ export default function JulgarProcessoPage() {
     return (
       <CCRPageWrapper title="Julgar" breadcrumbs={breadcrumbs}>
         <div className="space-y-6">
+          {/* Card de Informações do Processo */}
           <Card>
             <CardHeader>
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-96" />
+              <div className="space-y-1.5">
+                <CardTitle>Detalhes do Processo</CardTitle>
+                <CardDescription>
+                  Informações do processo em julgamento.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Campos principais */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="space-y-0">
+                      <Skeleton className="h-4 w-32 mb-1.5" />
+                      <Skeleton className="h-5 w-40" />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Assuntos */}
+                <div className="space-y-0">
+                  <Skeleton className="h-4 w-20 mb-1.5" />
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <Skeleton key={i} className="h-6 w-32" />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Presenças */}
+                <div className="space-y-0">
+                  <Skeleton className="h-4 w-24 mb-1.5" />
+                  <Skeleton className="h-5 w-full" />
+                </div>
+
+                {/* Autoridades */}
+                <div className="space-y-0">
+                  <Skeleton className="h-4 w-28 mb-1.5" />
+                  <Skeleton className="h-5 w-full" />
+                </div>
+
+                {/* Distribuição */}
+                <div className="space-y-0">
+                  <Skeleton className="h-4 w-24 mb-1.5" />
+                  <div className="space-y-0.5">
+                    <Skeleton className="h-5 w-64" />
+                    <Skeleton className="h-5 w-64" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card de Votações */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1.5">
+                  <CardTitle>Votações</CardTitle>
+                  <CardDescription>
+                    Registre votos individuais e organize votações para este processo.
+                  </CardDescription>
+                </div>
+                <Skeleton className="h-10 w-32" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-32 w-full" />
+            </CardContent>
+          </Card>
+
+          {/* Card de Resultado do Processo */}
+          <Card>
+            <CardHeader>
+              <div className="space-y-1.5">
+                <CardTitle>Resultado do Processo</CardTitle>
+                <CardDescription>
+                  Selecione o resultado final do processo nesta sessão.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-28 w-full" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card de Status e Ações */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Status e Ações do Processo</CardTitle>
+              <CardDescription>
+                Atualize o status do processo ou registre informações adicionais.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Skeleton className="h-24 w-full" />
@@ -377,14 +464,11 @@ export default function JulgarProcessoPage() {
         {/* Card de Informações do Processo */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="space-y-1.5">
-                <CardTitle>Detalhes do Processo</CardTitle>
-                <CardDescription>
-                  Informações do processo em julgamento.
-                </CardDescription>
-              </div>
-              <Badge className={currentStatus.color}>{currentStatus.label}</Badge>
+            <div className="space-y-1.5">
+              <CardTitle>Detalhes do Processo</CardTitle>
+              <CardDescription>
+                Informações do processo em julgamento.
+              </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
@@ -401,15 +485,88 @@ export default function JulgarProcessoPage() {
                   </p>
                 </div>
                 <div className="space-y-0">
+                  <label className="block text-sm font-medium mb-1.5">Status</label>
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      getResourceStatusColor(data.sessionResource.resource.status),
+                      'hover:bg-opacity-100'
+                    )}
+                  >
+                    {getResourceStatusLabel(data.sessionResource.resource.status)}
+                  </Badge>
+                </div>
+                <div className="space-y-0">
                   <label className="block text-sm font-medium mb-1.5">Número do Recurso</label>
                   <p className="text-sm">{data.sessionResource.resource.resourceNumber}</p>
                 </div>
+                {data.sessionResource.resource.processName && (
+                  <div className="space-y-0">
+                    <label className="block text-sm font-medium mb-1.5">Razão Social</label>
+                    <p className="text-sm">{data.sessionResource.resource.processName}</p>
+                  </div>
+                )}
               </div>
 
-              {data.sessionResource.resource.processName && (
+              {/* Assuntos */}
+              {data.sessionResource.resource.subjects && data.sessionResource.resource.subjects.length > 0 && (
                 <div className="space-y-0">
-                  <label className="block text-sm font-medium mb-1.5">Razão Social</label>
-                  <p className="text-sm">{data.sessionResource.resource.processName}</p>
+                  <label className="block text-sm font-medium mb-1.5">Assuntos</label>
+                  <div className="flex flex-wrap gap-2">
+                    {data.sessionResource.resource.subjects.map((subject) => (
+                      <Badge
+                        key={subject.id}
+                        variant="outline"
+                        className="bg-gray-50"
+                      >
+                        {subject.subject.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Presenças */}
+              {data.sessionResource.attendances && data.sessionResource.attendances.length > 0 && (
+                <div className="space-y-0">
+                  <label className="block text-sm font-medium mb-1.5">Presenças</label>
+                  <p className="text-sm">
+                    {(() => {
+                      const attendances = [...data.sessionResource.attendances];
+
+                      return attendances.map((attendance, idx) => {
+                        const name = attendance.part?.name || attendance.customName || 'Não informado';
+                        const role = attendance.part?.role || attendance.customRole;
+                        const formattedRole = role ? formatPartRole(role) : null;
+                        return (
+                          <span key={attendance.id}>
+                            {name}{formattedRole && ` (${formattedRole})`}
+                            {idx === attendances.length - 2 ? ' e ' : idx < attendances.length - 1 ? ', ' : ''}
+                          </span>
+                        );
+                      });
+                    })()}
+                  </p>
+                </div>
+              )}
+
+              {/* Autoridades */}
+              {data.sessionResource.resource.authorities && data.sessionResource.resource.authorities.length > 0 && (
+                <div className="space-y-0">
+                  <label className="block text-sm font-medium mb-1.5">Autoridades</label>
+                  <p className="text-sm">
+                    {(() => {
+                      const authorities = [...data.sessionResource.resource.authorities]
+                        .sort((a, b) => a.authorityRegistered.name.localeCompare(b.authorityRegistered.name, 'pt-BR'));
+
+                      return authorities.map((authority, idx) => (
+                        <span key={authority.id}>
+                          {authority.authorityRegistered.name} ({authorityTypeLabels[authority.type] || authority.type})
+                          {idx === authorities.length - 2 ? ' e ' : idx < authorities.length - 1 ? ', ' : ''}
+                        </span>
+                      ));
+                    })()}
+                  </p>
                 </div>
               )}
 
@@ -419,8 +576,7 @@ export default function JulgarProcessoPage() {
                   <label className="block text-sm font-medium mb-1.5">Distribuição</label>
                   <div className="space-y-2">
                     {data.distribution.firstDistribution && (
-                      <div className="flex items-center gap-3 text-sm bg-gray-50 p-3 rounded-lg border border-gray-200">
-                        <Gavel className="h-4 w-4 text-gray-500" />
+                      <div className="flex items-center justify-between text-sm bg-gray-50 p-3 rounded-lg border border-gray-200">
                         <div className="flex-1">
                           <p className="font-medium">
                             {data.distribution.firstDistribution.name}
@@ -429,8 +585,29 @@ export default function JulgarProcessoPage() {
                             Relator • {data.distribution.firstDistribution.role || 'Conselheiro'}
                           </p>
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(data.distribution.session.date), 'dd/MM/yyyy', { locale: ptBR })}
+                        </p>
                       </div>
                     )}
+                    {data.reviewers && data.reviewers.length > 0 && data.reviewers.map((revisor, idx) => (
+                      <div
+                        key={revisor.id}
+                        className="flex items-center justify-between text-sm bg-gray-50 p-3 rounded-lg border border-gray-200"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium">
+                            {revisor.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Revisor {data.reviewers.length > 1 ? `${idx + 1}` : ''} • {revisor.role}
+                          </p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(data.distribution.session.date), 'dd/MM/yyyy', { locale: ptBR })}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -457,191 +634,121 @@ export default function JulgarProcessoPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {/* Votos Registrados */}
-            {sessionVotes.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <UserCheck className="h-4 w-4" />
-                  Votos Registrados ({sessionVotes.length})
-                </h3>
-                <div className="space-y-2">
-                  {sessionVotes.map((vote) => (
-                    <div key={vote.id} className="p-4 bg-gray-50 border rounded-lg">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-sm">{vote.member.name}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {vote.voteType}
-                            </Badge>
-                            <Badge className={vote.voteKnowledgeType === 'NAO_CONHECIMENTO' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}>
-                              {vote.voteKnowledgeType === 'NAO_CONHECIMENTO' ? 'Não Conhecimento' : 'Conhecimento'}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-gray-600 space-y-0.5">
-                            {vote.preliminarDecision && (
-                              <p>• Preliminar: {vote.preliminarDecision.identifier}</p>
-                            )}
-                            {vote.meritoDecision && (
-                              <p>• Mérito: {vote.meritoDecision.identifier}</p>
-                            )}
-                            {vote.oficioDecision && (
-                              <p>• Ofício: {vote.oficioDecision.identifier}</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-2 p-2 bg-white rounded border border-gray-200">
-                        <p className="text-xs text-gray-700 whitespace-pre-wrap">{vote.voteText}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Botão para agrupar votos em votações */}
-                {sessionVotings.length === 0 && sessionVotes.some(v => !v.sessionVotingId) && (
-                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="text-sm font-medium text-blue-900 mb-1">
-                          Criar Votações
-                        </h4>
-                        <p className="text-xs text-blue-700">
-                          Os votos serão agrupados automaticamente em votações por tipo de decisão.
-                        </p>
-                      </div>
-                      <Button
-                        onClick={handleGroupVotes}
-                        disabled={saving}
-                        size="sm"
-                        className="cursor-pointer ml-4"
-                      >
-                        Agrupar Votos
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Votações Criadas */}
+            {/* Votações */}
             {sessionVotings.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Vote className="h-4 w-4" />
-                  Votações ({sessionVotings.length})
-                </h3>
-                <div className="space-y-3">
-                  {sessionVotings.map((voting) => (
-                    <div key={voting.id} className="border rounded-lg overflow-hidden">
-                      {/* Header da Votação */}
-                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 border-b">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h4 className="text-sm font-semibold text-blue-900 mb-1">
-                              {voting.label}
-                            </h4>
-                            <div className="flex items-center gap-2 text-xs text-blue-700">
-                              <Badge variant={voting.status === 'CONCLUIDA' ? 'default' : 'secondary'}>
-                                {voting.status === 'CONCLUIDA' ? 'Concluída' : 'Pendente'}
-                              </Badge>
-                              <span>• {voting.votes.length} voto(s)</span>
-                              {voting.status === 'CONCLUIDA' && voting.totalVotes > 0 && (
-                                <>
-                                  <span>• Total: {voting.totalVotes}</span>
-                                  <span>• Favor: {voting.votesInFavor}</span>
-                                  <span>• Contra: {voting.votesAgainst}</span>
-                                  {voting.abstentions > 0 && <span>• Abstenções: {voting.abstentions}</span>}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          {voting.status === 'PENDENTE' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="cursor-pointer"
-                              onClick={() => {
-                                setSelectedVoting(voting);
-                                setShowCompleteVotingModal(true);
-                              }}
-                            >
-                              Concluir Votação
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Votos da Votação */}
-                      <div className="p-4 bg-gray-50">
-                        <div className="space-y-2">
-                          {voting.votes.map((vote: any) => (
-                            <div key={vote.id} className="p-3 bg-white border rounded-lg">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-sm font-medium">{vote.member.name}</span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {vote.voteType}
-                                    </Badge>
-                                  </div>
-                                  <div className="text-xs text-gray-600 space-y-0.5">
-                                    {vote.preliminarDecision && (
-                                      <p>• Preliminar: {vote.preliminarDecision.identifier}</p>
-                                    )}
-                                    {vote.meritoDecision && (
-                                      <p>• Mérito: {vote.meritoDecision.identifier}</p>
-                                    )}
-                                    {vote.oficioDecision && (
-                                      <p>• Ofício: {vote.oficioDecision.identifier}</p>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Resultado (se concluída) */}
-                      {voting.status === 'CONCLUIDA' && voting.winningMember && (
-                        <div className="p-4 bg-green-50 border-t border-green-200">
-                          <div className="flex items-start gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-green-900">
-                                Decisão Vencedora: {voting.winningMember.name}
-                              </p>
-                              {voting.qualityVoteUsed && voting.qualityVoteMember && (
-                                <p className="text-xs text-green-700 mt-1">
-                                  Voto de qualidade por {voting.qualityVoteMember.name}
-                                </p>
-                              )}
-                              {voting.finalText && (
-                                <div className="mt-2 p-2 bg-white rounded border border-green-200">
-                                  <p className="text-xs text-gray-700 whitespace-pre-wrap">
-                                    {voting.finalText}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              <div className="space-y-4">
+                {sessionVotings.map((voting, index) => (
+                  <VotingCard
+                    key={voting.id}
+                    voting={voting}
+                    sessionId={params.id as string}
+                    resourceId={params.resourceId as string}
+                    index={index + 1}
+                    totalMembers={data.session.members.length}
+                  />
+                ))}
               </div>
             )}
 
-            {/* Mensagem quando não há votos */}
-            {sessionVotes.length === 0 && sessionVotings.length === 0 && (
+            {/* Mensagem quando não há votações */}
+            {sessionVotings.length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 <AlertCircle className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                <p className="text-sm">Nenhum voto registrado ainda.</p>
-                <p className="text-xs mt-1">Clique em "Novo Voto" para começar.</p>
+                <p className="text-sm">Nenhuma votação criada ainda.</p>
+                <p className="text-xs mt-1">Clique em "Novo Voto" para registrar votos que serão agrupados automaticamente em votações.</p>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Card de Resultado do Processo */}
+        <Card>
+          <CardHeader>
+            <div className="space-y-1.5">
+              <CardTitle>Resultado do Processo</CardTitle>
+              <CardDescription>
+                Selecione o resultado final do processo nesta sessão.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Suspenso */}
+              <Card
+                onClick={() => setSelectedResult('SUSPENSO')}
+                className={cn(
+                  "cursor-pointer transition-all",
+                  selectedResult === 'SUSPENSO'
+                    ? "border-2 border-gray-900"
+                    : "hover:border-gray-900"
+                )}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4">
+                  <CardTitle className="text-sm font-medium">Suspenso</CardTitle>
+                  <Ban className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="space-y-0.5 pb-4">
+                  <p className="text-xs text-muted-foreground">Processo suspenso temporariamente</p>
+                </CardContent>
+              </Card>
+
+              {/* Pedido de Diligência */}
+              <Card
+                onClick={() => setSelectedResult('DILIGENCIA')}
+                className={cn(
+                  "cursor-pointer transition-all",
+                  selectedResult === 'DILIGENCIA'
+                    ? "border-2 border-gray-900"
+                    : "hover:border-gray-900"
+                )}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4">
+                  <CardTitle className="text-sm font-medium">Pedido de Diligência</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="space-y-0.5 pb-4">
+                  <p className="text-xs text-muted-foreground">Solicitar informações adicionais</p>
+                </CardContent>
+              </Card>
+
+              {/* Pedido de Vista */}
+              <Card
+                onClick={() => setSelectedResult('PEDIDO_VISTA')}
+                className={cn(
+                  "cursor-pointer transition-all",
+                  selectedResult === 'PEDIDO_VISTA'
+                    ? "border-2 border-gray-900"
+                    : "hover:border-gray-900"
+                )}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4">
+                  <CardTitle className="text-sm font-medium">Pedido de Vista</CardTitle>
+                  <FileSearch className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="space-y-0.5 pb-4">
+                  <p className="text-xs text-muted-foreground">Processo em análise detalhada</p>
+                </CardContent>
+              </Card>
+
+              {/* Julgado */}
+              <Card
+                onClick={() => setSelectedResult('JULGADO')}
+                className={cn(
+                  "cursor-pointer transition-all",
+                  selectedResult === 'JULGADO'
+                    ? "border-2 border-gray-900"
+                    : "hover:border-gray-900"
+                )}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4">
+                  <CardTitle className="text-sm font-medium">Julgado</CardTitle>
+                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="space-y-0.5 pb-4">
+                  <p className="text-xs text-muted-foreground">Processo com decisão final</p>
+                </CardContent>
+              </Card>
+            </div>
           </CardContent>
         </Card>
 
@@ -665,7 +772,7 @@ export default function JulgarProcessoPage() {
               />
             </div>
 
-            {data.sessionResource.status === 'PEDIDO_VISTA' && (
+            {selectedResult === 'PEDIDO_VISTA' && (
               <div>
                 <label className="block text-sm font-medium mb-2">Membro que Solicitou Vista</label>
                 <select
@@ -683,7 +790,7 @@ export default function JulgarProcessoPage() {
               </div>
             )}
 
-            {data.sessionResource.status === 'DILIGENCIA' && (
+            {selectedResult === 'DILIGENCIA' && (
               <div>
                 <label className="block text-sm font-medium mb-2">Prazo (em dias)</label>
                 <Input
@@ -694,48 +801,6 @@ export default function JulgarProcessoPage() {
                 />
               </div>
             )}
-
-            <div className="flex flex-wrap gap-3 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => handleUpdateStatus('SUSPENSO')}
-                disabled={saving}
-              >
-                <Ban className="h-4 w-4 mr-2" />
-                Marcar como Suspenso
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleUpdateStatus('PEDIDO_VISTA')}
-                disabled={saving}
-              >
-                <FileSearch className="h-4 w-4 mr-2" />
-                Registrar Pedido de Vista
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleUpdateStatus('DILIGENCIA')}
-                disabled={saving}
-              >
-                <Clock className="h-4 w-4 mr-2" />
-                Registrar Diligência
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleUpdateStatus('EM_PAUTA')}
-                disabled={saving}
-              >
-                Retornar para Em Pauta
-              </Button>
-              <Button
-                onClick={() => handleUpdateStatus('JULGADO')}
-                disabled={saving}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Finalizar Julgamento
-              </Button>
-            </div>
           </CardContent>
         </Card>
 
@@ -744,29 +809,26 @@ export default function JulgarProcessoPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push(`/ccr/sessoes/${params.id}`)}
+            onClick={() => setSelectedResult(null)}
             disabled={saving}
+            className="cursor-pointer"
           >
-            Voltar para Sessão
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={() => {
+              if (selectedResult) {
+                handleUpdateStatus(selectedResult);
+              }
+            }}
+            disabled={saving || !selectedResult}
+            className="cursor-pointer"
+          >
+            Salvar Resultado
           </Button>
         </div>
       </div>
-
-      {/* Modals */}
-      {data && (
-        <>
-          <CompleteVotingModal
-            isOpen={showCompleteVotingModal}
-            onClose={() => {
-              setShowCompleteVotingModal(false);
-              setSelectedVoting(null);
-            }}
-            onConfirm={handleCompleteVoting}
-            voting={selectedVoting}
-            members={data.session.members.map(m => m.member)}
-          />
-        </>
-      )}
     </CCRPageWrapper>
   );
 }

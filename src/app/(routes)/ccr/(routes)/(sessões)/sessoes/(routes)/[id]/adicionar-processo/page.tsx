@@ -275,9 +275,19 @@ export default function AdicionarProcessoPage() {
     return (
       <CCRPageWrapper title="Adicionar Processo à Pauta" breadcrumbs={breadcrumbs}>
         <Card>
-          <CardContent className="p-6">
-            <Skeleton className="h-10 w-full mb-4" />
-            <Skeleton className="h-40 w-full" />
+          <CardHeader>
+            <div className="space-y-1.5">
+              <CardTitle>Adicionar Processo em Pauta</CardTitle>
+              <CardDescription>
+                Digite o número do recurso, número do processo, número do protocolo ou razão social.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-28" />
+            </div>
           </CardContent>
         </Card>
       </CCRPageWrapper>
@@ -448,7 +458,7 @@ export default function AdicionarProcessoPage() {
                         <Badge
                           key={subject.id}
                           variant="outline"
-                          className="bg-blue-50"
+                          className="bg-gray-50"
                         >
                           {subject.subject.name}
                         </Badge>

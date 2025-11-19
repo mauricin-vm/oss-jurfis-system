@@ -33,6 +33,7 @@ interface VoteDecision {
   id: string;
   identifier: string;
   type: string;
+  acceptText?: string | null;
   rejectText?: string | null;
   text?: string | null;
 }
@@ -52,6 +53,7 @@ interface SessionVoteFormProps {
 type SessionVoteFormValues = {
   memberId: string;
   voteKnowledgeType: 'NAO_CONHECIMENTO' | 'CONHECIMENTO';
+  preliminarSentido: 'ACATAR' | 'AFASTAR';
   preliminarDecisionId: string;
   meritoDecisionId: string;
   oficioDecisionId: string;
@@ -77,6 +79,7 @@ export function SessionVoteForm({
     defaultValues: {
       memberId: distributedToId || '',
       voteKnowledgeType: 'NAO_CONHECIMENTO',
+      preliminarSentido: 'ACATAR',
       preliminarDecisionId: 'none',
       meritoDecisionId: 'none',
       oficioDecisionId: 'none',
@@ -85,6 +88,7 @@ export function SessionVoteForm({
   });
 
   const voteKnowledgeType = form.watch('voteKnowledgeType');
+  const preliminarSentido = form.watch('preliminarSentido');
   const preliminarDecisionId = form.watch('preliminarDecisionId');
   const meritoDecisionId = form.watch('meritoDecisionId');
   const oficioDecisionId = form.watch('oficioDecisionId');
@@ -97,37 +101,112 @@ export function SessionVoteForm({
     return 'REVISOR';
   };
 
+  // Normalizar texto: remover ponto final e ajustar primeira letra
+  const normalizeText = (text: string, keepFirstUpper: boolean = false): string => {
+    if (!text) return '';
+    let normalized = text.trim();
+    // Converter primeira letra para minúscula ou manter maiúscula
+    if (normalized.length > 0 && !keepFirstUpper) {
+      normalized = normalized.charAt(0).toLowerCase() + normalized.slice(1);
+    }
+    // Remover ponto final se houver
+    if (normalized.endsWith('.')) {
+      normalized = normalized.slice(0, -1);
+    }
+    return normalized;
+  };
+
+  // Limpar ofício quando mudar de ACATAR para AFASTAR
+  useEffect(() => {
+    if (voteKnowledgeType === 'NAO_CONHECIMENTO' && preliminarSentido === 'AFASTAR') {
+      form.setValue('oficioDecisionId', 'none');
+    }
+  }, [preliminarSentido, voteKnowledgeType]);
+
   // Atualizar texto quando decisões mudarem
   useEffect(() => {
     buildVoteText();
-  }, [preliminarDecisionId, meritoDecisionId, oficioDecisionId, voteKnowledgeType]);
+  }, [preliminarSentido, preliminarDecisionId, meritoDecisionId, oficioDecisionId, voteKnowledgeType]);
 
   const buildVoteText = () => {
     let text = '';
 
     if (voteKnowledgeType === 'NAO_CONHECIMENTO') {
-      // Preliminar (opcional)
-      if (preliminarDecisionId && preliminarDecisionId !== 'none') {
+      const hasPreliminar = preliminarDecisionId && preliminarDecisionId !== 'none';
+      // Ofício só é considerado se a finalidade for ACATAR
+      const hasOficio = preliminarSentido === 'ACATAR' && oficioDecisionId && oficioDecisionId !== 'none';
+
+      let preliminarText = '';
+      let oficioText = '';
+
+      // Obter texto da preliminar
+      if (hasPreliminar) {
         const decision = preliminaryDecisions.find(d => d.id === preliminarDecisionId);
-        if (decision?.rejectText) {
-          text += decision.rejectText + '\n\n';
+        if (decision) {
+          const textToUse = preliminarSentido === 'ACATAR' ? decision.acceptText : decision.rejectText;
+          if (textToUse) {
+            // Manter primeira letra maiúscula porque inicia a frase
+            preliminarText = normalizeText(textToUse, true);
+          }
         }
+      }
+
+      // Obter texto do ofício (apenas se finalidade for ACATAR)
+      if (hasOficio) {
+        const decision = oficioDecisions.find(d => d.id === oficioDecisionId);
+        if (decision?.text) {
+          // Primeira letra minúscula porque vem depois de vírgula
+          oficioText = normalizeText(decision.text, false);
+        }
+      }
+
+      // Aplicar regras de composição
+      if (hasPreliminar && !hasOficio) {
+        // Regra 1: Apenas Preliminar (primeira maiúscula)
+        text = `${preliminarText}.`;
+      } else if (hasPreliminar && hasOficio) {
+        // Regra 2: Preliminar + Ofício (preliminar maiúscula, ofício minúscula)
+        text = `${preliminarText}, mas, de ofício, ${oficioText}.`;
+      } else if (!hasPreliminar && hasOficio) {
+        // Regra 3: Apenas Ofício (ofício minúscula)
+        text = `Não conhecer do recurso, mas, de ofício, ${oficioText}.`;
+      } else if (!hasPreliminar && !hasOficio && preliminarSentido === 'AFASTAR') {
+        // Regra 4: Afastar sem preliminar específica
+        text = 'Conhecer do recurso.';
       }
     } else {
-      // Mérito (obrigatório)
-      if (meritoDecisionId && meritoDecisionId !== 'none') {
+      // CONHECIMENTO
+      const hasMerito = meritoDecisionId && meritoDecisionId !== 'none';
+      const hasOficio = oficioDecisionId && oficioDecisionId !== 'none';
+
+      let meritoText = '';
+      let oficioText = '';
+
+      // Obter texto do mérito
+      if (hasMerito) {
         const decision = meritDecisions.find(d => d.id === meritoDecisionId);
         if (decision?.text) {
-          text += decision.text + '\n\n';
+          // Manter primeira letra maiúscula
+          meritoText = normalizeText(decision.text, true);
         }
       }
-    }
 
-    // Ofício (opcional)
-    if (oficioDecisionId && oficioDecisionId !== 'none') {
-      const decision = oficioDecisions.find(d => d.id === oficioDecisionId);
-      if (decision?.text) {
-        text += decision.text;
+      // Obter texto do ofício
+      if (hasOficio) {
+        const decision = oficioDecisions.find(d => d.id === oficioDecisionId);
+        if (decision?.text) {
+          // Primeira letra minúscula porque vem depois de vírgula
+          oficioText = normalizeText(decision.text, false);
+        }
+      }
+
+      // Aplicar regras de composição
+      if (hasMerito && !hasOficio) {
+        // Regra 1: Apenas Mérito (primeira maiúscula)
+        text = `${meritoText}.`;
+      } else if (hasMerito && hasOficio) {
+        // Regra 2: Mérito + Ofício
+        text = `${meritoText}, mas, de ofício, ${oficioText}.`;
       }
     }
 
@@ -144,6 +223,20 @@ export function SessionVoteForm({
       if (data.voteKnowledgeType === 'CONHECIMENTO' && (!data.meritoDecisionId || data.meritoDecisionId === 'none')) {
         toast.error('Decisão de mérito é obrigatória para voto de conhecimento');
         return;
+      }
+
+      if (data.voteKnowledgeType === 'NAO_CONHECIMENTO') {
+        const hasPreliminar = data.preliminarDecisionId && data.preliminarDecisionId !== 'none';
+        const hasOficio = data.oficioDecisionId && data.oficioDecisionId !== 'none';
+
+        // Se finalidade for ACATAR, precisa ter pelo menos Preliminar ou Ofício
+        if (data.preliminarSentido === 'ACATAR' && !hasPreliminar && !hasOficio) {
+          toast.error('Para votos de não conhecimento com finalidade de acatar, selecione pelo menos uma preliminar ou uma decisão de ofício');
+          return;
+        }
+
+        // Se finalidade for AFASTAR, é opcional (pode não ter preliminar)
+        // Neste caso, não precisa validação adicional
       }
 
       if (!data.voteText.trim()) {
@@ -193,193 +286,261 @@ export function SessionVoteForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Membro */}
-        <FormField
-          control={form.control}
-          name="memberId"
-          render={({ field }) => (
-            <FormItem className="space-y-0">
-              <FormLabel className="block text-sm font-medium mb-1.5">
-                Membro <span className="text-red-500">*</span>
-              </FormLabel>
-              <FormControl>
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={loading}
-                >
-                  <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
-                    <SelectValue placeholder="Selecione o membro..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-lg">
-                    {members.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name} - {member.role}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Tipo de Conhecimento */}
-        <FormField
-          control={form.control}
-          name="voteKnowledgeType"
-          render={({ field }) => (
-            <FormItem className="space-y-0">
-              <FormLabel className="block text-sm font-medium mb-1.5">
-                Tipo de Conhecimento <span className="text-red-500">*</span>
-              </FormLabel>
-              <FormControl>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => !loading && field.onChange('NAO_CONHECIMENTO')}
+        {/* Membro e Tipo */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            control={form.control}
+            name="memberId"
+            render={({ field }) => (
+              <FormItem className="space-y-0">
+                <FormLabel className="block text-sm font-medium mb-1.5">
+                  Membro <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
                     disabled={loading}
-                    className={`p-3.5 rounded-lg border-2 transition-all cursor-pointer ${
-                      field.value === 'NAO_CONHECIMENTO'
-                        ? 'border-gray-900 bg-gray-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    } disabled:opacity-50`}
                   >
-                    <p className="font-semibold text-gray-900">Não Conhecimento</p>
-                    <p className="text-xs text-gray-600 mt-1">Questões preliminares e de ofício</p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => !loading && field.onChange('CONHECIMENTO')}
-                    disabled={loading}
-                    className={`p-3.5 rounded-lg border-2 transition-all cursor-pointer ${
-                      field.value === 'CONHECIMENTO'
-                        ? 'border-gray-900 bg-gray-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    } disabled:opacity-50`}
-                  >
-                    <p className="font-semibold text-gray-900">Conhecimento</p>
-                    <p className="text-xs text-gray-600 mt-1">Análise de mérito do recurso</p>
-                  </button>
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                    <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
+                      <SelectValue placeholder="Selecione o membro..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-lg">
+                      {members.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{member.name} - {member.role}</span>
+                            {member.id === relatorId && (
+                              <span className="px-2 py-0.5 text-xs font-medium text-white bg-gray-900 rounded">
+                                Relator
+                              </span>
+                            )}
+                            {reviewersIds.includes(member.id) && (
+                              <span className="px-2 py-0.5 text-xs font-medium text-white bg-gray-900 rounded">
+                                Revisor
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        {/* Decisão Preliminar (apenas para Não Conhecimento) */}
+          <FormField
+            control={form.control}
+            name="voteKnowledgeType"
+            render={({ field }) => (
+              <FormItem className="space-y-0">
+                <FormLabel className="block text-sm font-medium mb-1.5">
+                  Tipo <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={loading}
+                  >
+                    <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
+                      <SelectValue placeholder="Selecione o tipo..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-lg">
+                      <SelectItem value="NAO_CONHECIMENTO">Não Conhecimento</SelectItem>
+                      <SelectItem value="CONHECIMENTO">Conhecimento</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Finalidade e Preliminar (para Não Conhecimento) */}
         {voteKnowledgeType === 'NAO_CONHECIMENTO' && (
-          <FormField
-            control={form.control}
-            name="preliminarDecisionId"
-            render={({ field }) => (
-              <FormItem className="space-y-0">
-                <FormLabel className="block text-sm font-medium mb-1.5">
-                  Decisão Preliminar <span className="text-gray-500 text-xs">(opcional)</span>
-                </FormLabel>
-                <FormControl>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={loading}
-                  >
-                    <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
-                      <SelectValue placeholder="Nenhuma" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-lg">
-                      <SelectItem value="none">Nenhuma</SelectItem>
-                      {preliminaryDecisions.map((decision) => (
-                        <SelectItem key={decision.id} value={decision.id}>
-                          {decision.identifier}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="preliminarSentido"
+                render={({ field }) => (
+                  <FormItem className="space-y-0">
+                    <FormLabel className="block text-sm font-medium mb-1.5">
+                      Finalidade <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={loading}
+                      >
+                        <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
+                          <SelectValue placeholder="Selecione a finalidade..." />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-lg">
+                          <SelectItem value="ACATAR">Acatar</SelectItem>
+                          <SelectItem value="AFASTAR">Afastar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="preliminarDecisionId"
+                render={({ field }) => (
+                  <FormItem className="space-y-0">
+                    <FormLabel className="block text-sm font-medium mb-1.5">
+                      Preliminar
+                    </FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={loading}
+                      >
+                        <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
+                          <SelectValue placeholder="Nenhuma" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-lg">
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {preliminaryDecisions.map((decision) => (
+                            <SelectItem key={decision.id} value={decision.id}>
+                              {decision.identifier}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Ofício (apenas se finalidade for Acatar) */}
+            {preliminarSentido === 'ACATAR' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="oficioDecisionId"
+                  render={({ field }) => (
+                    <FormItem className="space-y-0">
+                      <FormLabel className="block text-sm font-medium mb-1.5">
+                        Ofício
+                      </FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={loading}
+                        >
+                          <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
+                            <SelectValue placeholder="Nenhuma" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-lg">
+                            <SelectItem value="none">Nenhuma</SelectItem>
+                            {oficioDecisions.map((decision) => (
+                              <SelectItem key={decision.id} value={decision.id}>
+                                {decision.identifier}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             )}
-          />
+          </>
         )}
 
-        {/* Decisão de Mérito (apenas para Conhecimento) */}
+        {/* Mérito e Ofício (para Conhecimento) */}
         {voteKnowledgeType === 'CONHECIMENTO' && (
-          <FormField
-            control={form.control}
-            name="meritoDecisionId"
-            render={({ field }) => (
-              <FormItem className="space-y-0">
-                <FormLabel className="block text-sm font-medium mb-1.5">
-                  Decisão de Mérito <span className="text-red-500">*</span>
-                </FormLabel>
-                <FormControl>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={loading}
-                  >
-                    <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
-                      <SelectValue placeholder="Selecione uma decisão de mérito..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-lg">
-                      <SelectItem value="none">Selecione uma decisão de mérito...</SelectItem>
-                      {meritDecisions.map((decision) => (
-                        <SelectItem key={decision.id} value={decision.id}>
-                          {decision.identifier}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="meritoDecisionId"
+              render={({ field }) => (
+                <FormItem className="space-y-0">
+                  <FormLabel className="block text-sm font-medium mb-1.5">
+                    Mérito <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={loading}
+                    >
+                      <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
+                        <SelectValue placeholder="Selecione uma decisão de mérito..." />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-lg">
+                        <SelectItem value="none">Selecione uma decisão de mérito...</SelectItem>
+                        {meritDecisions.map((decision) => (
+                          <SelectItem key={decision.id} value={decision.id}>
+                            {decision.identifier}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="oficioDecisionId"
+              render={({ field }) => (
+                <FormItem className="space-y-0">
+                  <FormLabel className="block text-sm font-medium mb-1.5">
+                    Ofício
+                  </FormLabel>
+                  <FormControl>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={loading}
+                    >
+                      <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
+                        <SelectValue placeholder="Nenhuma" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-lg">
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {oficioDecisions.map((decision) => (
+                          <SelectItem key={decision.id} value={decision.id}>
+                            {decision.identifier}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         )}
 
-        {/* Decisão de Ofício */}
-        <FormField
-          control={form.control}
-          name="oficioDecisionId"
-          render={({ field }) => (
-            <FormItem className="space-y-0">
-              <FormLabel className="block text-sm font-medium mb-1.5">
-                Decisão de Ofício <span className="text-gray-500 text-xs">(opcional)</span>
-              </FormLabel>
-              <FormControl>
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={loading}
-                >
-                  <SelectTrigger className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-400 transition-colors">
-                    <SelectValue placeholder="Nenhuma" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-lg">
-                    <SelectItem value="none">Nenhuma</SelectItem>
-                    {oficioDecisions.map((decision) => (
-                      <SelectItem key={decision.id} value={decision.id}>
-                        {decision.identifier}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Texto do Voto */}
+        {/* Voto */}
         <FormField
           control={form.control}
           name="voteText"
           render={({ field }) => (
             <FormItem className="space-y-0">
               <FormLabel className="block text-sm font-medium mb-1.5">
-                Texto do Voto <span className="text-red-500">*</span>
+                Voto <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl>
                 <Textarea

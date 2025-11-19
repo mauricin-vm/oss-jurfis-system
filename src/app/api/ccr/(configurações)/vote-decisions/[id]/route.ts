@@ -150,8 +150,10 @@ export async function DELETE(
       include: {
         _count: {
           select: {
-            sessionVotingResults: true,
-            memberVoteDecisions: true,
+            votePreliminarDecisions: true,
+            voteMeritoDecisions: true,
+            voteOficioDecisions: true,
+            votingPreliminarDecisions: true,
           },
         },
       },
@@ -165,7 +167,13 @@ export async function DELETE(
     }
 
     // Verificar se a decisão está sendo usada
-    if (existingDecision._count.sessionVotingResults > 0 || existingDecision._count.memberVoteDecisions > 0) {
+    const isInUse =
+      existingDecision._count.votePreliminarDecisions > 0 ||
+      existingDecision._count.voteMeritoDecisions > 0 ||
+      existingDecision._count.voteOficioDecisions > 0 ||
+      existingDecision._count.votingPreliminarDecisions > 0;
+
+    if (isInUse) {
       return NextResponse.json(
         { error: 'Este voto não pode ser excluído pois está sendo utilizado em votações' },
         { status: 400 }

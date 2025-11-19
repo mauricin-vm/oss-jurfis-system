@@ -61,41 +61,11 @@ export async function GET(
                 },
               },
             },
-            judgment: {
+            sessionVotings: {
               include: {
-                winningVotingResult: {
-                  include: {
-                    decision: true,
-                    memberVotes: {
-                      include: {
-                        member: {
-                          select: {
-                            id: true,
-                            name: true,
-                            role: true,
-                          },
-                        },
-                        voteDecision: true,
-                        followsMember: {
-                          select: {
-                            id: true,
-                            name: true,
-                          },
-                        },
-                      },
-                      orderBy: {
-                        createdAt: 'asc',
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            sessionVotingResults: {
-              include: {
-                decision: true,
+                preliminarDecision: true,
                 winningMember: true,
-                memberVotes: {
+                votes: {
                   include: {
                     member: {
                       select: {
@@ -104,7 +74,9 @@ export async function GET(
                         role: true,
                       },
                     },
-                    voteDecision: true,
+                    preliminarDecision: true,
+                    meritoDecision: true,
+                    oficioDecision: true,
                     followsMember: {
                       select: {
                         id: true,
@@ -279,7 +251,7 @@ export async function PUT(
     }
 
     // Validar status
-    const validStatuses = ['PENDENTE', 'EM_PROGRESSO', 'CONCLUIDA', 'CANCELADA'];
+    const validStatuses = ['PUBLICACAO', 'PENDENTE', 'CONCLUIDA', 'CANCELADA'];
 
     if (status && !validStatuses.includes(status)) {
       return new NextResponse('Status inválido', { status: 400 });

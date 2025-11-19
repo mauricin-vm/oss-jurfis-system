@@ -132,7 +132,7 @@ export async function GET(req: Request) {
         },
         _count: {
           select: {
-            sessionVotingResults: true,
+            sessionVotings: true,
           },
         },
       },
@@ -300,7 +300,7 @@ export async function POST(req: Request) {
         },
         _count: {
           select: {
-            sessionVotingResults: true,
+            sessionVotings: true,
           },
         },
       },

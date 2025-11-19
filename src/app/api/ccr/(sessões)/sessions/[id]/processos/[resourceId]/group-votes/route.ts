@@ -18,14 +18,13 @@ export async function GET(
     const { id: sessionId, resourceId } = await params;
 
     // Buscar o SessionResource
-    const sessionResource = await prismadb.sessionResource.findFirst({
+    const sessionResource = await prismadb.sessionResource.findUnique({
       where: {
-        resourceId,
-        sessionId,
+        id: resourceId,
       },
     });
 
-    if (!sessionResource) {
+    if (!sessionResource || sessionResource.sessionId !== sessionId) {
       return NextResponse.json(
         { error: 'Processo não encontrado na sessão' },
         { status: 404 }
@@ -159,14 +158,13 @@ export async function POST(
     const { id: sessionId, resourceId } = await params;
 
     // Buscar o SessionResource
-    const sessionResource = await prismadb.sessionResource.findFirst({
+    const sessionResource = await prismadb.sessionResource.findUnique({
       where: {
-        resourceId,
-        sessionId,
+        id: resourceId,
       },
     });
 
-    if (!sessionResource) {
+    if (!sessionResource || sessionResource.sessionId !== sessionId) {
       return NextResponse.json(
         { error: 'Processo não encontrado na sessão' },
         { status: 404 }

@@ -46,4 +46,8 @@ next-env.d.ts
 # temp files
 temp_page_*.pdf
 
+# prisma
 /src/generated/prisma
+
+# vscode
+.vscode

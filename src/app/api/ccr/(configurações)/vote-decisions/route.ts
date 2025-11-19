@@ -29,8 +29,10 @@ export async function GET(req: Request) {
       include: {
         _count: {
           select: {
-            sessionVotingResults: true,
-            memberVoteDecisions: true,
+            votePreliminarDecisions: true,
+            voteMeritoDecisions: true,
+            voteOficioDecisions: true,
+            votingPreliminarDecisions: true,
           },
         },
       },
@@ -43,7 +45,11 @@ export async function GET(req: Request) {
     // Adicionar flag isInUse para indicar se a decisão está sendo usada
     const decisionsWithFlag = decisions.map(decision => ({
       ...decision,
-      isInUse: decision._count.sessionVotingResults > 0 || decision._count.memberVoteDecisions > 0,
+      isInUse:
+        decision._count.votePreliminarDecisions > 0 ||
+        decision._count.voteMeritoDecisions > 0 ||
+        decision._count.voteOficioDecisions > 0 ||
+        decision._count.votingPreliminarDecisions > 0,
     }));
 
     return NextResponse.json(decisionsWithFlag);

@@ -18,14 +18,13 @@ export async function GET(
     const { id: sessionId, resourceId } = await params;
 
     // Buscar o SessionResource
-    const sessionResource = await prismadb.sessionResource.findFirst({
+    const sessionResource = await prismadb.sessionResource.findUnique({
       where: {
-        resourceId,
-        sessionId,
+        id: resourceId,
       },
     });
 
-    if (!sessionResource) {
+    if (!sessionResource || sessionResource.sessionId !== sessionId) {
       return NextResponse.json(
         { error: 'Processo não encontrado na sessão' },
         { status: 404 }
@@ -38,6 +37,17 @@ export async function GET(
         sessionResourceId: sessionResource.id,
       },
       include: {
+        sessionResource: {
+          select: {
+            resource: {
+              select: {
+                processNumber: true,
+                processName: true,
+                resourceNumber: true,
+              },
+            },
+          },
+        },
         preliminarDecision: {
           select: {
             id: true,
@@ -60,7 +70,12 @@ export async function GET(
           },
         },
         votes: {
-          include: {
+          select: {
+            id: true,
+            voteType: true,
+            voteKnowledgeType: true,
+            participationStatus: true,
+            votePosition: true,
             member: {
               select: {
                 id: true,

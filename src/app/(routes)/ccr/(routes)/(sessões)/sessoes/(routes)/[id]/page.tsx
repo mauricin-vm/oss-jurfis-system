@@ -60,7 +60,19 @@ interface MemberVote {
     name: string;
     role: string;
   };
-  voteDecision: {
+  preliminarDecision: {
+    id: string;
+    type: string;
+    code: string;
+    name: string;
+  } | null;
+  meritoDecision: {
+    id: string;
+    type: string;
+    code: string;
+    name: string;
+  } | null;
+  oficioDecision: {
     id: string;
     type: string;
     code: string;
@@ -74,30 +86,24 @@ interface MemberVote {
 
 interface VotingResult {
   id: string;
-  type: string;
+  votingType: string;
   totalVotes: number;
   votesInFavor: number;
   votesAgainst: number;
   abstentions: number;
   qualityVoteUsed: boolean;
-  justification: string | null;
-  decision: {
+  finalText: string | null;
+  preliminarDecision?: {
     id: string;
     type: string;
     code: string;
     name: string;
-  };
+  } | null;
   winningMember: {
     id: string;
     name: string;
-  };
-  memberVotes: MemberVote[];
-}
-
-interface Judgment {
-  id: string;
-  observations: string | null;
-  winningVotingResult: VotingResult;
+  } | null;
+  votes: MemberVote[];
 }
 
 interface SessionResource {
@@ -120,8 +126,7 @@ interface SessionResource {
     name: string;
     role: string;
   } | null;
-  judgment: Judgment | null;
-  sessionVotingResults: VotingResult[];
+  sessionVotings: VotingResult[];
   attendances?: Array<{
     id: string;
     partId: string | null;
@@ -420,30 +425,6 @@ function SortableResourceCard({
         </div>
 
         <div className="flex items-start gap-2 flex-shrink-0">
-          {/* Badge de status - não mostrar para processos Em Pauta */}
-          {resource.status !== 'EM_PAUTA' && (
-            <Badge
-              variant="secondary"
-              className={cn(
-                resourceStatusBadgeColors[resource.status] || 'bg-gray-100 text-gray-800 hover:bg-gray-100'
-              )}
-            >
-              {resourceStatusLabels[resource.status]}
-            </Badge>
-          )}
-
-          {/* Badge de resultado (se houver julgamento) */}
-          {resource.judgment && (
-            <Badge
-              variant="secondary"
-              className={cn(
-                getDecisionColor(resource.judgment.winningVotingResult.decision.name)
-              )}
-            >
-              {resource.judgment.winningVotingResult.decision.name.toUpperCase()}
-            </Badge>
-          )}
-
           {/* Botão Presença - aparece quando sessão está PENDENTE */}
           {canJudgeProcesses && resource.status !== 'JULGADO' && (
             <TooltipWrapper content="Registrar presença de partes">
@@ -487,108 +468,6 @@ function SortableResourceCard({
           )}
         </div>
       </div>
-
-      {/* Seção de Ata (só aparece se houver julgamento) */}
-      {resource.judgment && resource.judgment.observations && (
-        <div className="mt-6 pt-6 border-t">
-          <label className="block text-sm font-medium mb-1.5">Ata</label>
-          <p className="text-sm text-muted-foreground">{resource.judgment.observations}</p>
-        </div>
-      )}
-
-      {/* Seção de Votos Registrados (só aparece se houver julgamento) */}
-      {resource.judgment && resource.judgment.winningVotingResult.memberVotes.length > 0 && (
-        <div className="mt-6 pt-6 border-t">
-          <label className="block text-sm font-medium mb-3">Votos Registrados</label>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Coluna: Relatores/Revisores */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Relatores/Revisores</label>
-              <div className="space-y-1.5">
-                {resource.judgment.winningVotingResult.memberVotes
-                  .filter(vote => vote.voteType === 'RELATOR' || vote.voteType === 'REVISOR')
-                  .map(vote => (
-                    <div key={vote.id} className="flex items-center justify-between text-sm">
-                      <div>
-                        <span className="font-medium">{voteTypeLabels[vote.voteType]}: </span>
-                        <span className="text-muted-foreground">{vote.member.name}</span>
-                      </div>
-                      {vote.voteDecision ? (
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            'text-xs',
-                            getDecisionColor(vote.voteDecision.name)
-                          )}
-                        >
-                          {vote.voteDecision.name.toUpperCase()}
-                        </Badge>
-                      ) : vote.votePosition ? (
-                        <span className="text-blue-600 text-xs">
-                          {votePositionLabels[vote.votePosition]}
-                        </span>
-                      ) : null}
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-            {/* Coluna: Conselheiros */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Conselheiros</label>
-              <div className="text-sm space-y-1.5">
-                {(() => {
-                  // Agrupar conselheiros por decisão
-                  const votantes = resource.judgment!.winningVotingResult.memberVotes
-                    .filter(vote => vote.voteType === 'VOTANTE' || vote.voteType === 'PRESIDENTE');
-
-                  // Agrupar por decisão
-                  const votesByDecision: Record<string, MemberVote[]> = {};
-                  votantes.forEach(vote => {
-                    const decisionName = vote.voteDecision?.name || 'Outros';
-                    if (!votesByDecision[decisionName]) {
-                      votesByDecision[decisionName] = [];
-                    }
-                    votesByDecision[decisionName].push(vote);
-                  });
-
-                  return Object.entries(votesByDecision).map(([decision, votes]) => (
-                    <div key={decision}>
-                      <span className={cn(
-                        'font-medium',
-                        getDecisionColor(decision).includes('green') ? 'text-green-700' :
-                          getDecisionColor(decision).includes('red') ? 'text-red-700' :
-                            getDecisionColor(decision).includes('yellow') ? 'text-yellow-700' :
-                              'text-gray-700'
-                      )}>
-                        {decision.toUpperCase()}:{' '}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {votes.map((v, idx) => (
-                          <span key={v.id}>
-                            {v.member.name}
-                            {idx < votes.length - 1 && ', '}
-                          </span>
-                        ))}
-                      </span>
-                    </div>
-                  ));
-                })()}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Rodapé com data de registro (só aparece se houver julgamento) */}
-      {resource.judgment && (
-        <div className="mt-6 pt-6 border-t">
-          <p className="text-xs text-muted-foreground">
-            Registrado em {format(new Date(resource.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-          </p>
-        </div>
-      )}
     </div>
   );
 }
@@ -916,8 +795,8 @@ export default function VisualizarSessaoPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="space-y-1.5">
-                      <Skeleton className="h-6 w-48" />
-                      <Skeleton className="h-4 w-64" />
+                      <CardTitle>Informações da Sessão</CardTitle>
+                      <CardDescription>Detalhes e horários da sessão.</CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
                       <Skeleton className="h-9 w-9" />
@@ -929,13 +808,13 @@ export default function VisualizarSessaoPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {Array.from({ length: 9 }).map((_, i) => (
-                    <div key={i}>
-                      <Skeleton className="h-4 w-24 mb-1.5" />
-                      <Skeleton className="h-5 w-32" />
-                    </div>
-                  ))}
-                </div>
+                    {Array.from({ length: 7 }).map((_, i) => (
+                      <div key={i} className="space-y-0">
+                        <Skeleton className="h-4 w-24 mb-1.5" />
+                        <Skeleton className="h-5 w-32" />
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -946,18 +825,55 @@ export default function VisualizarSessaoPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="space-y-1.5">
-                      <Skeleton className="h-6 w-48" />
-                      <Skeleton className="h-4 w-32" />
+                      <CardTitle>Conselheiros Participantes</CardTitle>
+                      <CardDescription>
+                        <Skeleton className="h-4 w-24" />
+                      </CardDescription>
                     </div>
                     <Skeleton className="h-9 w-9" />
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-16 w-full" />
                 </CardContent>
               </Card>
             </div>
           </div>
+
+          {/* Card de Assuntos Administrativos */}
+          <Card>
+            <CardHeader>
+              <div className="space-y-1.5">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-96" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <Skeleton className="h-16 w-full" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card de Progresso do Julgamento */}
+          <Card>
+            <CardHeader>
+              <div className="space-y-1.5">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-5 gap-6 text-center">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i}>
+                    <Skeleton className="h-9 w-16 mx-auto mb-1.5" />
+                    <Skeleton className="h-4 w-20 mx-auto" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Card de Processos para Julgamento */}
           <Card>
@@ -971,11 +887,11 @@ export default function VisualizarSessaoPage() {
               </div>
             </CardHeader>
             <CardContent>
-            <div className="space-y-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full" />
-              ))}
-            </div>
+              <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-40 w-full" />
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -1014,128 +930,128 @@ export default function VisualizarSessaoPage() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1.5">
                     <CardTitle>Informações da Sessão</CardTitle>
-                    <CardDescription>Detalhes e horários da sessão</CardDescription>
+                    <CardDescription>Detalhes e horários da sessão.</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                  <TooltipWrapper content="Gerenciar publicações">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/ccr/sessoes/${session.id}/publicacoes`)}
-                      className="cursor-pointer"
-                    >
-                      <Newspaper className="h-4 w-4" />
-                    </Button>
-                  </TooltipWrapper>
-                  <TooltipWrapper content="Gerenciar distribuições">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/ccr/sessoes/${session.id}/distribuicoes`)}
-                      className="cursor-pointer"
-                    >
-                      <Blinds className="h-4 w-4" />
-                    </Button>
-                  </TooltipWrapper>
-                  <TooltipWrapper content="Gerenciar assuntos administrativos">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/ccr/sessoes/${session.id}/assuntos-administrativos`)}
-                      className="cursor-pointer"
-                    >
-                      <ClipboardList className="h-4 w-4" />
-                    </Button>
-                  </TooltipWrapper>
-                  <TooltipWrapper content="Editar sessão">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/ccr/sessoes/${session.id}/editar`)}
-                      className="cursor-pointer"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </TooltipWrapper>
+                    <TooltipWrapper content="Gerenciar publicações">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/ccr/sessoes/${session.id}/publicacoes`)}
+                        className="cursor-pointer"
+                      >
+                        <Newspaper className="h-4 w-4" />
+                      </Button>
+                    </TooltipWrapper>
+                    <TooltipWrapper content="Gerenciar distribuições">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/ccr/sessoes/${session.id}/distribuicoes`)}
+                        className="cursor-pointer"
+                      >
+                        <Blinds className="h-4 w-4" />
+                      </Button>
+                    </TooltipWrapper>
+                    <TooltipWrapper content="Gerenciar assuntos administrativos">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/ccr/sessoes/${session.id}/assuntos-administrativos`)}
+                        className="cursor-pointer"
+                      >
+                        <ClipboardList className="h-4 w-4" />
+                      </Button>
+                    </TooltipWrapper>
+                    <TooltipWrapper content="Editar sessão">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/ccr/sessoes/${session.id}/editar`)}
+                        className="cursor-pointer"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </TooltipWrapper>
 
-                  {/* Botão Publicar Pauta - aparece quando status = PUBLICACAO */}
-                  {canPublishAgenda && (
-                    <Button
-                      size="sm"
-                      onClick={() => setShowPublishModal(true)}
-                      className="cursor-pointer bg-purple-600 hover:bg-purple-700"
-                    >
-                      <Newspaper className="h-4 w-4 mr-2" />
-                      Publicar Pauta
-                    </Button>
-                  )}
+                    {/* Botão Publicar Pauta - aparece quando status = PUBLICACAO */}
+                    {canPublishAgenda && (
+                      <Button
+                        size="sm"
+                        onClick={() => setShowPublishModal(true)}
+                        className="cursor-pointer bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Newspaper className="h-4 w-4 mr-2" />
+                        Publicar Pauta
+                      </Button>
+                    )}
 
-                  {/* Botão Concluir Sessão - aparece quando todos processos julgados */}
-                  {canCompleteSession && (
-                    <Button
-                      size="sm"
-                      onClick={handleCompleteSession}
-                      disabled={completeLoading}
-                      className="cursor-pointer bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      {completeLoading ? 'Concluindo...' : 'Concluir Sessão'}
-                    </Button>
-                  )}
-                </div>
+                    {/* Botão Concluir Sessão - aparece quando todos processos julgados */}
+                    {canCompleteSession && (
+                      <Button
+                        size="sm"
+                        onClick={handleCompleteSession}
+                        disabled={completeLoading}
+                        className="cursor-pointer bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        {completeLoading ? 'Concluindo...' : 'Concluir Sessão'}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Número da Pauta</label>
-                  <p className="text-sm">{session.sessionNumber}</p>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Número da Pauta</label>
+                    <p className="text-sm">{session.sessionNumber}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Tipo de Sessão</label>
+                    <p className="text-sm">{typeLabels[session.type] || session.type}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Status</label>
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        'inline-flex items-center gap-1.5',
+                        statusColors[session.status] || 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+                      )}
+                    >
+                      {statusIcons[session.status]}
+                      {statusLabels[session.status]}
+                    </Badge>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Número da Ata</label>
+                    <p className="text-sm">{session.minutes?.minutesNumber || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Publicação</label>
+                    <p className="text-sm">
+                      {session.publications && session.publications.length > 0 ? (
+                        (() => {
+                          const pub = session.publications[0];
+                          const pubDate = new Date(pub.publicationDate);
+                          const adjustedDate = new Date(pubDate.getTime() + pubDate.getTimezoneOffset() * 60000);
+                          return `${format(adjustedDate, 'dd/MM/yyyy', { locale: ptBR })}, ${pub.publicationNumber}`;
+                        })()
+                      ) : '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Presidente</label>
+                    <p className="text-sm">{session.president?.name || '-'}</p>
+                  </div>
+                  <div className="lg:col-span-3">
+                    <label className="block text-sm font-medium mb-1.5">Data/Horário</label>
+                    <p className="text-sm">
+                      {formatFullDateTime(session.date, session.startTime, session.endTime)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Tipo de Sessão</label>
-                  <p className="text-sm">{typeLabels[session.type] || session.type}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Status</label>
-                  <Badge
-                    variant="secondary"
-                    className={cn(
-                      'inline-flex items-center gap-1.5',
-                      statusColors[session.status] || 'bg-gray-100 text-gray-800 hover:bg-gray-100'
-                    )}
-                  >
-                    {statusIcons[session.status]}
-                    {statusLabels[session.status]}
-                  </Badge>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Número da Ata</label>
-                  <p className="text-sm">{session.minutes?.minutesNumber || '-'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Publicação</label>
-                  <p className="text-sm">
-                    {session.publications && session.publications.length > 0 ? (
-                      (() => {
-                        const pub = session.publications[0];
-                        const pubDate = new Date(pub.publicationDate);
-                        const adjustedDate = new Date(pubDate.getTime() + pubDate.getTimezoneOffset() * 60000);
-                        return `${format(adjustedDate, 'dd/MM/yyyy', { locale: ptBR })}, ${pub.publicationNumber}`;
-                      })()
-                    ) : '-'}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Presidente</label>
-                  <p className="text-sm">{session.president?.name || '-'}</p>
-                </div>
-                <div className="lg:col-span-3">
-                  <label className="block text-sm font-medium mb-1.5">Data/Horário</label>
-                  <p className="text-sm">
-                    {formatFullDateTime(session.date, session.startTime, session.endTime)}
-                  </p>
-                </div>
-              </div>
               </CardContent>
             </Card>
           </div>
@@ -1151,16 +1067,16 @@ export default function VisualizarSessaoPage() {
                       {session.members.length} {session.members.length === 1 ? 'participante' : 'participantes'}
                     </CardDescription>
                   </div>
-                <TooltipWrapper content="Editar membros participantes">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => router.push(`/ccr/sessoes/${session.id}/membros`)}
-                    className="cursor-pointer"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </TooltipWrapper>
+                  <TooltipWrapper content="Editar membros participantes">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/ccr/sessoes/${session.id}/membros`)}
+                      className="cursor-pointer"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </TooltipWrapper>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1203,9 +1119,9 @@ export default function VisualizarSessaoPage() {
               </div>
             </CardHeader>
             <CardContent>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm whitespace-pre-wrap">{session.administrativeMatters}</p>
-            </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm whitespace-pre-wrap">{session.administrativeMatters}</p>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -1224,28 +1140,28 @@ export default function VisualizarSessaoPage() {
             </CardHeader>
             <CardContent>
 
-            <div className="grid grid-cols-5 gap-6 text-center">
-              <div>
-                <div className="text-3xl font-bold text-blue-700">{progressStats.pendentes}</div>
-                <p className="text-sm text-muted-foreground mt-1.5">Pendentes</p>
+              <div className="grid grid-cols-5 gap-6 text-center">
+                <div>
+                  <div className="text-3xl font-bold text-blue-700">{progressStats.pendentes}</div>
+                  <p className="text-sm text-muted-foreground mt-1.5">Pendentes</p>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-amber-700">{progressStats.suspensos}</div>
+                  <p className="text-sm text-muted-foreground mt-1.5">Suspensos</p>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-cyan-700">{progressStats.diligencias}</div>
+                  <p className="text-sm text-muted-foreground mt-1.5">Diligências</p>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-rose-700">{progressStats.vistas}</div>
+                  <p className="text-sm text-muted-foreground mt-1.5">Vistas</p>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-emerald-700">{progressStats.julgados}</div>
+                  <p className="text-sm text-muted-foreground mt-1.5">Julgados</p>
+                </div>
               </div>
-              <div>
-                <div className="text-3xl font-bold text-amber-700">{progressStats.suspensos}</div>
-                <p className="text-sm text-muted-foreground mt-1.5">Suspensos</p>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-cyan-700">{progressStats.diligencias}</div>
-                <p className="text-sm text-muted-foreground mt-1.5">Diligências</p>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-rose-700">{progressStats.vistas}</div>
-                <p className="text-sm text-muted-foreground mt-1.5">Vistas</p>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-emerald-700">{progressStats.julgados}</div>
-                <p className="text-sm text-muted-foreground mt-1.5">Julgados</p>
-              </div>
-            </div>
             </CardContent>
           </Card>
         )}
@@ -1260,93 +1176,93 @@ export default function VisualizarSessaoPage() {
                   Lista de processos incluídos nesta sessão ordenados por ordem de julgamento
                 </CardDescription>
               </div>
-            {canAddRemoveProcesses && (
-              <Button
-                onClick={() => router.push(`/ccr/sessoes/${session.id}/adicionar-processo`)}
-                className="cursor-pointer"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Processo
-              </Button>
-            )}
+              {canAddRemoveProcesses && (
+                <Button
+                  onClick={() => router.push(`/ccr/sessoes/${session.id}/adicionar-processo`)}
+                  className="cursor-pointer"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Processo
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>
-          {session.resources.length === 0 ? (
-            <div className="flex h-[200px] items-center justify-center rounded-lg border border-dashed">
-              <div className="text-center">
-                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  Nenhum processo adicionado à pauta
-                </p>
-              </div>
-            </div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={session.resources.map((r) => r.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-4">
-                  {session.resources
-                    .sort((a, b) => a.order - b.order)
-                    .map((resource) => {
-                      // Buscar a última distribuição deste recurso nesta sessão
-                      const distribution = session.distributions?.find(
-                        d => d.resourceId === resource.resource.id
-                      );
-
-                      return (
-                        <SortableResourceCard
-                          key={resource.id}
-                          resource={resource}
-                          distribution={distribution}
-                          session={session}
-                          canJudgeProcesses={canJudgeProcesses}
-                          canAddRemoveProcesses={canAddRemoveProcesses}
-                          onRemove={() => {
-                            toast.warning('Tem certeza que deseja remover este processo da pauta?', {
-                              duration: 10000,
-                              action: {
-                                label: 'Confirmar',
-                                onClick: async () => {
-                                  try {
-                                    const response = await fetch(`/api/ccr/session-resources/${resource.id}`, {
-                                      method: 'DELETE',
-                                    });
-
-                                    if (response.ok) {
-                                      toast.success('Processo removido da pauta');
-                                      fetchSession();
-                                    } else {
-                                      const errorText = await response.text();
-                                      toast.error(errorText || 'Erro ao remover processo da pauta');
-                                    }
-                                  } catch (error) {
-                                    console.error('Error removing resource:', error);
-                                    toast.error('Erro ao remover processo da pauta');
-                                  }
-                                },
-                              },
-                              cancel: {
-                                label: 'Cancelar',
-                                onClick: () => { },
-                              },
-                            });
-                          }}
-                          onJudge={() => router.push(`/ccr/sessoes/${session.id}/processos/${resource.id}/julgar`)}
-                          onPresence={() => router.push(`/ccr/sessoes/${session.id}/processos/${resource.id}/presenca`)}
-                        />
-                      );
-                    })}
+            {session.resources.length === 0 ? (
+              <div className="flex h-[200px] items-center justify-center rounded-lg border border-dashed">
+                <div className="text-center">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum processo adicionado à pauta
+                  </p>
                 </div>
-              </SortableContext>
-            </DndContext>
-          )}
+              </div>
+            ) : (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={session.resources.map((r) => r.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-4">
+                    {session.resources
+                      .sort((a, b) => a.order - b.order)
+                      .map((resource) => {
+                        // Buscar a última distribuição deste recurso nesta sessão
+                        const distribution = session.distributions?.find(
+                          d => d.resourceId === resource.resource.id
+                        );
+
+                        return (
+                          <SortableResourceCard
+                            key={resource.id}
+                            resource={resource}
+                            distribution={distribution}
+                            session={session}
+                            canJudgeProcesses={canJudgeProcesses}
+                            canAddRemoveProcesses={canAddRemoveProcesses}
+                            onRemove={() => {
+                              toast.warning('Tem certeza que deseja remover este processo da pauta?', {
+                                duration: 10000,
+                                action: {
+                                  label: 'Confirmar',
+                                  onClick: async () => {
+                                    try {
+                                      const response = await fetch(`/api/ccr/session-resources/${resource.id}`, {
+                                        method: 'DELETE',
+                                      });
+
+                                      if (response.ok) {
+                                        toast.success('Processo removido da pauta');
+                                        fetchSession();
+                                      } else {
+                                        const errorText = await response.text();
+                                        toast.error(errorText || 'Erro ao remover processo da pauta');
+                                      }
+                                    } catch (error) {
+                                      console.error('Error removing resource:', error);
+                                      toast.error('Erro ao remover processo da pauta');
+                                    }
+                                  },
+                                },
+                                cancel: {
+                                  label: 'Cancelar',
+                                  onClick: () => { },
+                                },
+                              });
+                            }}
+                            onJudge={() => router.push(`/ccr/sessoes/${session.id}/processos/${resource.id}/julgar`)}
+                            onPresence={() => router.push(`/ccr/sessoes/${session.id}/processos/${resource.id}/presenca`)}
+                          />
+                        );
+                      })}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
           </CardContent>
         </Card>
 

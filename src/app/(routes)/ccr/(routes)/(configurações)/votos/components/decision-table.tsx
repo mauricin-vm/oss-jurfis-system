@@ -41,8 +41,10 @@ interface Decision {
   isActive: boolean;
   isInUse?: boolean;
   _count?: {
-    sessionVotingResults: number;
-    memberVoteDecisions: number;
+    votePreliminarDecisions: number;
+    voteMeritoDecisions: number;
+    voteOficioDecisions: number;
+    votingPreliminarDecisions: number;
   };
 }
 

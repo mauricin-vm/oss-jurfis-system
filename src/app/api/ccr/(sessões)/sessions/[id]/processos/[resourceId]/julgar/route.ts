@@ -33,6 +33,7 @@ export async function GET(
             processNumber: true,
             processName: true,
             resourceNumber: true,
+            status: true,
             subjects: {
               include: {
                 subject: {
@@ -55,6 +56,23 @@ export async function GET(
                 },
               },
             },
+          },
+        },
+        attendances: {
+          select: {
+            id: true,
+            part: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+              },
+            },
+            customName: true,
+            customRole: true,
+          },
+          orderBy: {
+            createdAt: 'asc',
           },
         },
         viewRequestedBy: {
@@ -115,6 +133,13 @@ export async function GET(
             id: true,
             name: true,
             role: true,
+          },
+        },
+        session: {
+          select: {
+            id: true,
+            sessionNumber: true,
+            date: true,
           },
         },
       },

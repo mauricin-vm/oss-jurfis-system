@@ -130,7 +130,7 @@ export async function GET(
             role: true,
           },
         },
-        sessionVotingResults: {
+        sessionVotings: {
           include: {
             winningMember: {
               select: {
@@ -146,7 +146,7 @@ export async function GET(
         },
         _count: {
           select: {
-            sessionVotingResults: true,
+            sessionVotings: true,
           },
         },
       },
@@ -246,7 +246,7 @@ export async function PUT(
         },
         _count: {
           select: {
-            sessionVotingResults: true,
+            sessionVotings: true,
           },
         },
       },
@@ -287,7 +287,7 @@ export async function DELETE(
       include: {
         _count: {
           select: {
-            sessionVotingResults: true,
+            sessionVotings: true,
           },
         },
       },
@@ -298,7 +298,7 @@ export async function DELETE(
     }
 
     // Não permitir exclusão se já tem resultados de votação
-    if (sessionResource._count.sessionVotingResults > 0) {
+    if (sessionResource._count.sessionVotings > 0) {
       return new NextResponse(
         'Não é possível excluir recurso de sessão com votações registradas',
         { status: 400 }
