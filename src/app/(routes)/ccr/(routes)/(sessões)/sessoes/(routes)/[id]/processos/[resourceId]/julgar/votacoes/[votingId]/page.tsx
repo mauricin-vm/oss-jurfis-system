@@ -11,8 +11,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CheckCircle2, Clock, Calendar, User, FileText } from 'lucide-react';
+import { CheckCircle2, Clock, Calendar, User, FileText, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const authorityTypeLabels: Record<string, string> = {
+  AUTOR_PROCEDIMENTO_FISCAL: 'Autor do Procedimento Fiscal',
+  JULGADOR_SINGULAR: 'Julgador Singular',
+  COORDENADOR: 'Coordenador',
+  OUTROS: 'Outros',
+};
 
 interface Member {
   id: string;
@@ -414,8 +421,17 @@ export default function VotingDetailsPage() {
   const allMembers = (() => {
     // Se é votação concluída de outra sessão, mostrar apenas membros que TEM voto registrado
     if (isCompletedFromOtherSession) {
+      const presidentId = session?.president?.id;
       const membersWithVotes = voting?.votes
-        .filter(v => v.voteType !== 'RELATOR' && v.voteType !== 'REVISOR')
+        .filter(v => {
+          // Excluir votos de relator e revisor
+          if (v.voteType === 'RELATOR' || v.voteType === 'REVISOR') return false;
+
+          // Excluir presidente (ele será mostrado separadamente no voto de minerva)
+          if (presidentId && v.member.id === presidentId) return false;
+
+          return true;
+        })
         .map(v => ({
           id: v.member.id,
           member: v.member
@@ -1043,6 +1059,7 @@ export default function VotingDetailsPage() {
             {/* Votos do Relator/Revisores */}
             {registeredVotes.length > 0 && (
               <div className="mt-6 pt-6 border-t">
+                <label className="block text-sm font-medium mb-2">Votos</label>
                 <div className="space-y-2">
                   {registeredVotes.map((vote) => (
                     <div key={vote.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
@@ -1071,6 +1088,44 @@ export default function VotingDetailsPage() {
                 </div>
               </div>
             )}
+
+            {/* Impedimentos (apenas autoridades) */}
+            {(() => {
+              // Filtrar apenas impedimentos que têm authorityType (são autoridades)
+              const authorityImpediments = voting?.impedidMembers?.filter(imp =>
+                imp.authorityType && availableMembers.some(m => m.member.id === imp.memberId)
+              ) || [];
+
+              if (authorityImpediments.length === 0) return null;
+
+              return (
+                <div className="mt-6 pt-6 border-t">
+                  <label className="block text-sm font-medium mb-2">Impedimentos</label>
+                  <div className="space-y-2">
+                    {authorityImpediments.map((impediment) => {
+                      const member = availableMembers.find(m => m.member.id === impediment.memberId);
+                      if (!member) return null;
+                      return (
+                        <div key={impediment.memberId} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
+                          <div className="flex items-center gap-3">
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{member.member.name}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {member.member.role}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="text-xs text-red-600 font-medium">
+                            {authorityTypeLabels[impediment.authorityType] || impediment.authorityType}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
 
@@ -1114,19 +1169,11 @@ export default function VotingDetailsPage() {
                 return (
                   <div
                     key={sessionMember.member.id}
-                    className={cn(
-                      "grid grid-cols-[250px_1fr] border-b last:border-b-0",
-                      isImpedido && "opacity-70"
-                    )}
+                    className="grid grid-cols-[250px_1fr] border-b last:border-b-0"
                   >
                     <div className="p-4 border-r bg-gray-50">
                       <p className="text-sm font-medium">{sessionMember.member.name}</p>
                       <p className="text-xs text-muted-foreground">{sessionMember.member.role}</p>
-                      {isImpedido && (
-                        <p className="text-xs text-red-600 mt-1 font-medium">
-                          Impedido - {impediment.authorityType}
-                        </p>
-                      )}
                     </div>
                   <div className="grid gap-px" style={{ gridTemplateColumns: `repeat(${registeredVotes.length}, 1fr) repeat(3, 70px)` }}>
                     {/* Célula clicável para cada voto registrado */}

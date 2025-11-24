@@ -32,7 +32,7 @@ export async function GET(req: Request) {
             sessionsPresent: true,
             sessionResourcesAsPresident: true,
             distributionsAsFirst: true,
-            votes: true,
+            sessionVotes: true,
           },
         },
       },
@@ -50,7 +50,7 @@ export async function GET(req: Request) {
         member._count.sessionsPresent > 0 ||
         member._count.sessionResourcesAsPresident > 0 ||
         member._count.distributionsAsFirst > 0 ||
-        member._count.votes > 0,
+        member._count.sessionVotes > 0,
     }));
 
     return NextResponse.json(membersWithFlag);

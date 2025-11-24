@@ -46,6 +46,16 @@ export async function GET(
             status: true,
           },
         },
+        attendances: {
+          include: {
+            part: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         session: {

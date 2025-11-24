@@ -216,7 +216,7 @@ const statusColors: Record<string, string> = {
 
 const statusLabels: Record<string, string> = {
   PUBLICACAO: 'Aguardando Publicação',
-  PENDENTE: 'Pauta Publicada',
+  PENDENTE: 'Pendente',
   CONCLUIDA: 'Finalizada',
   CANCELADA: 'Cancelada',
 };
@@ -523,6 +523,7 @@ export default function VisualizarSessaoPage() {
   const [publishLoading, setPublishLoading] = useState(false);
   const [completeLoading, setCompleteLoading] = useState(false);
   const [revertLoading, setRevertLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
   const [shouldModalAnimate, setShouldModalAnimate] = useState(false);
   const [publishData, setPublishData] = useState({
@@ -669,8 +670,14 @@ export default function VisualizarSessaoPage() {
   };
 
   const handleCompleteSession = async () => {
-    toast.warning('Tem certeza que deseja concluir esta sessão? Todos os processos em pauta devem ter resultado.', {
+    const resourcesCount = session?.resources.length ?? 0;
+    const message = resourcesCount > 0
+      ? 'Tem certeza que deseja concluir esta sessão? Todos os processos em pauta devem ter resultado.'
+      : 'Tem certeza que deseja concluir esta sessão?';
+
+    toast.warning(message, {
       duration: 10000,
+      className: 'min-w-[450px]',
       action: {
         label: 'Confirmar',
         onClick: async () => {
@@ -710,6 +717,7 @@ export default function VisualizarSessaoPage() {
   const handleRevertSession = async () => {
     toast.warning('Tem certeza que deseja reverter esta sessão para PENDENTE? Ela ficará editável novamente.', {
       duration: 10000,
+      className: 'min-w-[450px]',
       action: {
         label: 'Confirmar',
         onClick: async () => {
@@ -738,6 +746,43 @@ export default function VisualizarSessaoPage() {
         label: 'Cancelar',
         onClick: () => {
           setRevertLoading(false);
+        },
+      },
+    });
+  };
+
+  const handleDeleteSession = async () => {
+    toast.warning('Tem certeza que deseja excluir esta sessão? Esta ação não pode ser desfeita.', {
+      duration: 10000,
+      className: 'min-w-[450px]',
+      action: {
+        label: 'Confirmar Exclusão',
+        onClick: async () => {
+          try {
+            setDeleteLoading(true);
+            const response = await fetch(`/api/ccr/sessions/${params.id}`, {
+              method: 'DELETE',
+            });
+
+            if (response.ok) {
+              toast.success('Sessão excluída com sucesso');
+              router.push('/ccr/sessoes');
+            } else {
+              const errorText = await response.text();
+              toast.error(errorText || 'Erro ao excluir sessão');
+            }
+          } catch (error) {
+            console.error('Error deleting session:', error);
+            toast.error('Erro ao excluir sessão');
+          } finally {
+            setDeleteLoading(false);
+          }
+        },
+      },
+      cancel: {
+        label: 'Cancelar',
+        onClick: () => {
+          setDeleteLoading(false);
         },
       },
     });
@@ -801,7 +846,14 @@ export default function VisualizarSessaoPage() {
   const canAddRemoveProcesses = session?.status === 'PUBLICACAO' || session?.status === 'PENDENTE';
   const canJudgeProcesses = session?.status === 'PENDENTE';
   const totalResources = session?.resources.length ?? 0;
-  const allProcessesHaveResult = totalResources === 0 || session?.resources.every(r => ['JULGADO', 'SUSPENSO', 'DILIGENCIA', 'PEDIDO_VISTA'].includes(r.status));
+
+  // Lógica de conclusão:
+  // - Se há processos: todos devem ter resultado
+  // - Se não há processos: deve ter assuntos administrativos
+  const allProcessesHaveResult = totalResources > 0
+    ? session?.resources.every(r => ['JULGADO', 'SUSPENSO', 'DILIGENCIA', 'PEDIDO_VISTA'].includes(r.status))
+    : (session?.administrativeMatters && session.administrativeMatters.trim().length > 0) || false;
+
   const canCompleteSession = session?.status === 'PENDENTE' && allProcessesHaveResult;
   const hasPublications = (session?.publications?.filter(p => p.type === 'SESSAO').length ?? 0) > 0;
 
@@ -1055,6 +1107,21 @@ export default function VisualizarSessaoPage() {
                             <Edit className="h-4 w-4" />
                           </Button>
                         </TooltipWrapper>
+                        {/* Botão Excluir - aparece apenas quando status é PENDENTE e não há processos */}
+                        {session.status === 'PENDENTE' && session.resources.length === 0 && (
+                          <TooltipWrapper content="Excluir sessão">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleDeleteSession}
+                              disabled={deleteLoading}
+                              className="cursor-pointer h-9 w-9 p-0"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </TooltipWrapper>
+                        )}
                       </>
                     )}
 

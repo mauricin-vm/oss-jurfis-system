@@ -208,6 +208,7 @@ interface JudgmentData {
     members: SessionMember[];
   };
   distribution: Distribution | null;
+  relatorDistributionDate: Date | null;
   reviewers: Array<{ id: string; name: string; role: string | null; distributionDate: Date | null }>;
   distributedMemberIds: string[];
   completedVotings: CompletedVoting[];
@@ -1962,9 +1963,11 @@ export default function JulgarProcessoPage() {
                             Relator • {data.distribution.firstDistribution.role || 'Conselheiro'}
                           </p>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(data.distribution.session.date), 'dd/MM/yyyy', { locale: ptBR })}
-                        </p>
+                        {data.relatorDistributionDate && (
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(data.relatorDistributionDate), 'dd/MM/yyyy', { locale: ptBR })}
+                          </p>
+                        )}
                       </div>
                     )}
                     {data.reviewers && data.reviewers.length > 0 && data.reviewers.map((revisor, idx) => (

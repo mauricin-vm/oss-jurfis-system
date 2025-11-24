@@ -699,9 +699,27 @@ export default function RecursoDetalhesPage() {
 
           <TabsContent value="tramitacoes" className="mt-6 overflow-y-auto max-h-[calc(100vh-140px)] focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0">
             {loadingTramitations ? (
-              <div className="bg-white rounded-lg border p-8 text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto" />
-                <p className="mt-4 text-sm text-gray-600">Carregando tramitações...</p>
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i}>
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-5 w-32" />
+                            <Skeleton className="h-5 w-24" />
+                          </div>
+                          <Skeleton className="h-4 w-full max-w-lg" />
+                          <div className="flex gap-4">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-4 w-32" />
+                          </div>
+                        </div>
+                        <Skeleton className="h-9 w-20" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             ) : tramitations.length === 0 ? (
               <div className="bg-white rounded-lg border p-8 text-center">
@@ -732,9 +750,28 @@ export default function RecursoDetalhesPage() {
               </CardHeader>
               <CardContent>
                 {loadingSessions ? (
-                  <div className="flex flex-col items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto" />
-                    <p className="mt-4 text-sm text-gray-600">Carregando sessões...</p>
+                  <div className="space-y-4">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="rounded-lg border p-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-3 flex-1">
+                            <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
+                            <div className="flex-1 space-y-3">
+                              <div className="space-y-2">
+                                <Skeleton className="h-5 w-32" />
+                                <Skeleton className="h-4 w-40" />
+                              </div>
+                              <div className="space-y-2">
+                                <Skeleton className="h-4 w-full max-w-md" />
+                                <Skeleton className="h-4 w-full max-w-sm" />
+                                <Skeleton className="h-4 w-full max-w-lg" />
+                              </div>
+                            </div>
+                          </div>
+                          <Skeleton className="h-9 w-24 flex-shrink-0" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : sessions.length === 0 ? (
                   <div className="flex items-center justify-center h-24 border-2 border-dashed rounded-lg">

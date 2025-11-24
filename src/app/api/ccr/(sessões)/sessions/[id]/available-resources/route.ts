@@ -126,6 +126,23 @@ export async function GET(
                 status: true,
               },
             },
+            attendances: {
+              include: {
+                part: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+            viewRequestedBy: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+              },
+            },
           },
           orderBy: {
             createdAt: 'desc',
@@ -200,24 +217,193 @@ export async function GET(
         if (resource.distributions && resource.distributions.length > 0) {
           const lastDist = resource.distributions[0];
 
-          // Buscar membros revisores
-          const revisoresList = lastDist.reviewersIds.length > 0
-            ? await prismadb.member.findMany({
-                where: { id: { in: lastDist.reviewersIds } },
-                select: { id: true, name: true, role: true },
+          // Buscar a primeira distribuição do relator (primeira vez que ele foi distributedTo)
+          const firstDistribution = await prismadb.sessionDistribution.findFirst({
+            where: {
+              resourceId: resource.id,
+              distributedToId: lastDist.firstDistribution?.id,
+              isActive: true,
+            },
+            include: {
+              session: {
+                select: {
+                  date: true,
+                },
+              },
+            },
+            orderBy: {
+              session: {
+                date: 'asc',
+              },
+            },
+          });
+
+          // Buscar membros revisores com datas de distribuição
+          let revisoresList: Array<{
+            id: string;
+            name: string;
+            role: string;
+            distributionDate: Date | null;
+          }> = [];
+
+          if (lastDist.reviewersIds.length > 0) {
+            const membersData = await prismadb.member.findMany({
+              where: { id: { in: lastDist.reviewersIds } },
+              select: { id: true, name: true, role: true },
+            });
+
+            // Para cada revisor, buscar se ele tem uma distribuição
+            revisoresList = await Promise.all(
+              membersData.map(async (member) => {
+                // Buscar distribuição onde este membro foi o distributedTo
+                const memberDistribution = await prismadb.sessionDistribution.findFirst({
+                  where: {
+                    resourceId: resource.id,
+                    distributedToId: member.id,
+                    isActive: true,
+                  },
+                  include: {
+                    session: {
+                      select: {
+                        date: true,
+                      },
+                    },
+                  },
+                  orderBy: {
+                    session: {
+                      date: 'asc',
+                    },
+                  },
+                });
+
+                return {
+                  id: member.id,
+                  name: member.name,
+                  role: member.role,
+                  distributionDate: memberDistribution?.session.date || null,
+                };
               })
-            : [];
+            );
+          }
 
           distributionInfo = {
             relator: lastDist.firstDistribution,
+            relatorSessionDate: firstDistribution?.session.date || null,
             revisores: revisoresList,
           };
         }
+
+        // Buscar todos os resultados do recurso para enriquecer as sessões
+        const allResults = await prismadb.sessionResult.findMany({
+          where: {
+            resourceId: resource.id,
+          },
+          include: {
+            preliminaryDecision: {
+              select: {
+                id: true,
+                identifier: true,
+                type: true,
+              },
+            },
+            winningMember: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+              },
+            },
+            votes: {
+              include: {
+                member: {
+                  select: {
+                    id: true,
+                    name: true,
+                    role: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        });
+
+        // Enriquecer cada sessão com distribuições e resultados
+        const sessionsWithFullData = await Promise.all(
+          resource.sessions.map(async (sessionResource) => {
+            const distribution = await prismadb.sessionDistribution.findFirst({
+              where: {
+                resourceId: resource.id,
+                sessionId: sessionResource.sessionId,
+              },
+            });
+
+            let firstDistribution = null;
+            let distributedTo = null;
+            let reviewers = [];
+
+            if (distribution) {
+              // Buscar o primeiro distribuído (relator)
+              if (distribution.firstDistributionId) {
+                firstDistribution = await prismadb.member.findUnique({
+                  where: { id: distribution.firstDistributionId },
+                  select: {
+                    id: true,
+                    name: true,
+                    role: true,
+                  },
+                });
+              }
+
+              // Buscar quem recebeu a distribuição nesta sessão
+              distributedTo = await prismadb.member.findUnique({
+                where: { id: distribution.distributedToId },
+                select: {
+                  id: true,
+                  name: true,
+                  role: true,
+                },
+              });
+
+              // Buscar os revisores usando os IDs
+              if (distribution.reviewersIds && distribution.reviewersIds.length > 0) {
+                reviewers = await prismadb.member.findMany({
+                  where: {
+                    id: { in: distribution.reviewersIds },
+                  },
+                  select: {
+                    id: true,
+                    name: true,
+                    role: true,
+                  },
+                });
+              }
+            }
+
+            // Filtrar resultados julgados nesta sessão específica
+            const sessionResults = allResults.filter(
+              (result) => result.judgedInSessionId === sessionResource.sessionId
+            );
+
+            return {
+              ...sessionResource,
+              distribution: distribution ? {
+                firstDistribution,
+                distributedTo,
+                reviewers,
+              } : null,
+              results: sessionResults,
+            };
+          })
+        );
 
         return {
           ...resource,
           parts,
           distributionInfo,
+          sessions: sessionsWithFullData,
         };
       })
     );

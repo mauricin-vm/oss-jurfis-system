@@ -36,6 +36,14 @@ interface SessionCardProps {
         role: string;
       }>;
     } | null;
+    attendances?: Array<{
+      id: string;
+      customName?: string | null;
+      part?: {
+        id: string;
+        name: string;
+      } | null;
+    }>;
     results: Array<{
       id: string;
       votingType: string;
@@ -108,7 +116,7 @@ export function SessionCard({ sessionResource }: SessionCardProps) {
           <div
             className={cn(
               'flex items-center justify-center w-8 h-8 rounded-full font-medium text-sm flex-shrink-0 transition-colors',
-              'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              'bg-primary text-primary-foreground hover:bg-primary/90'
             )}
           >
             {sessionResource.order}
@@ -168,6 +176,26 @@ export function SessionCard({ sessionResource }: SessionCardProps) {
                   <span className="font-medium">Distribuição: </span>
                   <span className="text-muted-foreground">
                     {sessionResource.distribution.distributedTo.name}
+                  </span>
+                </div>
+              )}
+              {sessionResource.attendances && sessionResource.attendances.length > 0 && (
+                <div>
+                  <span className="font-medium">Partes: </span>
+                  <span className="text-muted-foreground">
+                    {(() => {
+                      const names = sessionResource.attendances
+                        .map(att => att.part?.name || att.customName || '')
+                        .filter(name => name);
+
+                      if (names.length === 0) return '';
+                      if (names.length === 1) return names[0];
+                      if (names.length === 2) return `${names[0]} e ${names[1]}`;
+
+                      const allButLast = names.slice(0, -1).join(', ');
+                      const last = names[names.length - 1];
+                      return `${allButLast} e ${last}`;
+                    })()}
                   </span>
                 </div>
               )}

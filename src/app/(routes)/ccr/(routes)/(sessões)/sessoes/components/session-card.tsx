@@ -53,7 +53,7 @@ const statusColors: Record<string, string> = {
 
 const statusLabels: Record<string, string> = {
   PUBLICACAO: 'Aguardando Publicação',
-  PENDENTE: 'Pauta Publicada',
+  PENDENTE: 'Pendente',
   CONCLUIDA: 'Finalizada',
   CANCELADA: 'Cancelada',
 };

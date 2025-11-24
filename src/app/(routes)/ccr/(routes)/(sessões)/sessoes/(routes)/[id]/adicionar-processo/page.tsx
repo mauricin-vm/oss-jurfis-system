@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Scale, AlertCircle, Loader2, X } from 'lucide-react';
+import { Search, AlertCircle, Loader2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { getResourceStatusLabel, getResourceStatusColor, type ResourceStatusKey } from '@/app/(routes)/ccr/hooks/resource-status';
+import { SessionCard } from '@/app/(routes)/ccr/(routes)/(recursos)/recursos/components/session-card';
+import { ResourceSearchCard } from './components/resource-search-card';
 
 interface Part {
   id: string;
@@ -37,10 +39,12 @@ interface DistributionInfo {
     name: string;
     role: string;
   } | null;
+  relatorSessionDate: Date | null;
   revisores: {
     id: string;
     name: string;
     role: string;
+    distributionDate: Date | null;
   }[];
 }
 
@@ -48,13 +52,67 @@ interface SessionHistory {
   id: string;
   status: string;
   order: number;
+  minutesText?: string | null;
   session: {
     id: string;
-    sessionNumber: string;
+    sessionNumber: number;
     date: Date;
     type: string;
     status: string;
   };
+  distribution?: {
+    firstDistribution: {
+      id: string;
+      name: string;
+      role: string;
+    } | null;
+    distributedTo: {
+      id: string;
+      name: string;
+      role: string;
+    } | null;
+    reviewers: Array<{
+      id: string;
+      name: string;
+      role: string;
+    }>;
+  } | null;
+  viewRequestedBy?: {
+    id: string;
+    name: string;
+    role: string;
+  } | null;
+  attendances?: Array<{
+    id: string;
+    customName?: string | null;
+    part?: {
+      id: string;
+      name: string;
+    } | null;
+  }>;
+  results: Array<{
+    id: string;
+    votingType: string;
+    status: string;
+    preliminaryDecision?: {
+      id: string;
+      identifier: string;
+      type: string;
+    } | null;
+    winningMember?: {
+      id: string;
+      name: string;
+      role: string;
+    } | null;
+    votes: Array<{
+      id: string;
+      member: {
+        id: string;
+        name: string;
+        role: string;
+      };
+    }>;
+  }>;
 }
 
 interface Subject {
@@ -198,9 +256,61 @@ export default function AdicionarProcessoPage() {
   };
 
   const handleSelectResource = (resource: Resource) => {
-    setSelectedResource(resource);
-    setSearchResults([]);
-    setSearchTerm('');
+    // Função auxiliar para processar a seleção do recurso
+    const selectResource = () => {
+      setSelectedResource(resource);
+      setSearchResults([]);
+      setSearchTerm('');
+
+      // Auto-preencher o campo de membro baseado no status
+      // Se for SUSPENSO ou DILIGENCIA, pegar o último membro distribuído
+      if (resource.status === 'SUSPENSO' || resource.status === 'DILIGENCIA') {
+        // Buscar a última sessão com distribuição
+        const lastSessionWithDistribution = resource.sessions.find(
+          (session) => session.distribution?.distributedTo
+        );
+
+        if (lastSessionWithDistribution?.distribution?.distributedTo) {
+          setSelectedMemberId(lastSessionWithDistribution.distribution.distributedTo.id);
+        }
+      }
+
+      // Se for PEDIDO_VISTA, pegar o membro que solicitou vista
+      if (resource.status === 'PEDIDO_VISTA') {
+        const lastSessionWithVista = resource.sessions.find(
+          (session) => session.viewRequestedBy
+        );
+
+        if (lastSessionWithVista?.viewRequestedBy) {
+          setSelectedMemberId(lastSessionWithVista.viewRequestedBy.id);
+        }
+      }
+    };
+
+    // Verificar se o recurso está em status avançado (após julgamento)
+    const advancedStatuses = ['PUBLICACAO_ACORDAO', 'ASSINATURA_ACORDAO', 'NOTIFICACAO_DECISAO', 'CONCLUIDO'];
+
+    if (advancedStatuses.includes(resource.status)) {
+      // Mostrar confirmação para recursos em status avançado
+      toast.warning(
+        `Este processo está no status "${getResourceStatusLabel(resource.status)}" (já passou da fase de julgamento). Deseja incluí-lo em pauta mesmo assim?`,
+        {
+          duration: 10000,
+          className: 'min-w-[450px]',
+          action: {
+            label: 'Confirmar',
+            onClick: selectResource,
+          },
+          cancel: {
+            label: 'Cancelar',
+            onClick: () => {},
+          },
+        }
+      );
+    } else {
+      // Selecionar normalmente para outros status
+      selectResource();
+    }
   };
 
   const handleAddToSession = async () => {
@@ -340,58 +450,14 @@ export default function AdicionarProcessoPage() {
                     ? 'processo encontrado'
                     : 'processos encontrados'}
                 </h3>
-                <div className="space-y-2">
-                  {searchResults.map((resource) => (
-                    <div
+                <div className="space-y-3">
+                  {searchResults.map((resource, index) => (
+                    <ResourceSearchCard
                       key={resource.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => handleSelectResource(resource)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h4 className="font-semibold">
-                              {resource.resourceNumber}
-                            </h4>
-                            <Badge
-                              variant="secondary"
-                              className={cn(
-                                getResourceStatusColor(resource.status),
-                                'hover:bg-opacity-100'
-                              )}
-                            >
-                              {getResourceStatusLabel(resource.status)}
-                            </Badge>
-                          </div>
-                          {resource.processName && (
-                            <p className="text-sm text-muted-foreground mb-1">
-                              {resource.processName}
-                            </p>
-                          )}
-                          {resource.distributionInfo && (resource.distributionInfo.relator || resource.distributionInfo.revisores.length > 0) && (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Scale className="h-3 w-3" />
-                              {resource.distributionInfo.relator && (
-                                <span>
-                                  Relator: {resource.distributionInfo.relator.name}
-                                </span>
-                              )}
-                              {resource.distributionInfo.revisores.length > 0 && (
-                                <>
-                                  {resource.distributionInfo.relator && ' • '}
-                                  <span>
-                                    {resource.distributionInfo.revisores.length === 1 ? 'Revisor' : 'Revisores'}: {resource.distributionInfo.revisores.map(r => r.name).join(', ')}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <Button size="sm" variant="outline" className="cursor-pointer">
-                          Selecionar
-                        </Button>
-                      </div>
-                    </div>
+                      resource={resource}
+                      index={index + 1}
+                      onSelect={() => handleSelectResource(resource)}
+                    />
                   ))}
                 </div>
               </div>
@@ -518,8 +584,7 @@ export default function AdicionarProcessoPage() {
                     <label className="block text-sm font-medium mb-1.5">Distribuições Anteriores</label>
                     <div className="space-y-2">
                       {selectedResource.distributionInfo.relator && (
-                        <div className="flex items-center gap-3 text-sm bg-gray-50 p-3 rounded-lg border border-gray-200">
-                          <Scale className="h-4 w-4 text-gray-500" />
+                        <div className="flex items-center justify-between text-sm bg-gray-50 p-3 rounded-lg border border-gray-200">
                           <div className="flex-1">
                             <p className="font-medium">
                               {selectedResource.distributionInfo.relator.name}
@@ -528,14 +593,22 @@ export default function AdicionarProcessoPage() {
                               Relator • {selectedResource.distributionInfo.relator.role}
                             </p>
                           </div>
+                          {selectedResource.distributionInfo.relatorSessionDate && (
+                            <p className="text-xs text-muted-foreground">
+                              {format(
+                                new Date(selectedResource.distributionInfo.relatorSessionDate),
+                                'dd/MM/yyyy',
+                                { locale: ptBR }
+                              )}
+                            </p>
+                          )}
                         </div>
                       )}
                       {selectedResource.distributionInfo.revisores.map((revisor, idx) => (
                         <div
                           key={revisor.id}
-                          className="flex items-center gap-3 text-sm bg-gray-50 p-3 rounded-lg border border-gray-200"
+                          className="flex items-center justify-between text-sm bg-gray-50 p-3 rounded-lg border border-gray-200"
                         >
-                          <Scale className="h-4 w-4 text-gray-500" />
                           <div className="flex-1">
                             <p className="font-medium">
                               {revisor.name}
@@ -544,6 +617,15 @@ export default function AdicionarProcessoPage() {
                               Revisor {selectedResource.distributionInfo.revisores.length > 1 ? `${idx + 1}` : ''} • {revisor.role}
                             </p>
                           </div>
+                          {revisor.distributionDate && (
+                            <p className="text-xs text-muted-foreground">
+                              {format(
+                                new Date(revisor.distributionDate),
+                                'dd/MM/yyyy',
+                                { locale: ptBR }
+                              )}
+                            </p>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -554,28 +636,21 @@ export default function AdicionarProcessoPage() {
                 {selectedResource.sessions && selectedResource.sessions.length > 0 && (
                   <div className="space-y-0">
                     <label className="block text-sm font-medium mb-1.5">Histórico de Sessões</label>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {selectedResource.sessions.map((sessionHistory) => (
-                        <div
+                        <SessionCard
                           key={sessionHistory.id}
-                          className="flex items-center gap-3 text-sm bg-yellow-50 p-3 rounded-lg border border-yellow-200"
-                        >
-                          <AlertCircle className="h-4 w-4 text-yellow-600" />
-                          <div className="flex-1">
-                            <p className="font-medium">
-                              Sessão {sessionHistory.session.sessionNumber}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(
-                                new Date(sessionHistory.session.date),
-                                'dd/MM/yyyy',
-                                { locale: ptBR }
-                              )}{' '}
-                              • Ordem: {sessionHistory.order} • Status:{' '}
-                              {sessionHistory.status}
-                            </p>
-                          </div>
-                        </div>
+                          sessionResource={{
+                            id: sessionHistory.id,
+                            order: sessionHistory.order,
+                            status: sessionHistory.status,
+                            minutesText: sessionHistory.minutesText,
+                            session: sessionHistory.session,
+                            distribution: sessionHistory.distribution,
+                            attendances: sessionHistory.attendances,
+                            results: sessionHistory.results,
+                          }}
+                        />
                       ))}
                     </div>
                   </div>

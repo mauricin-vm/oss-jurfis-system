@@ -359,13 +359,20 @@ export async function POST(req: Request) {
     });
 
     if (hasPublications > 0) {
-      // Verificar se a pauta atual está igual à última publicação
+      // Se já há publicações, verificar se a pauta atual está igual à última publicação
       const isEqual = await isAgendaEqualToLastPublication(sessionId);
 
       // Se estiver igual, status = PENDENTE; se diferente, status = PUBLICACAO
       await prismadb.session.update({
         where: { id: sessionId },
         data: { status: isEqual ? 'PENDENTE' : 'PUBLICACAO' }
+      });
+    } else {
+      // Se não há publicações ainda, mas há processos na pauta, status = PUBLICACAO
+      // (acabamos de adicionar um processo, então sabemos que há pelo menos 1)
+      await prismadb.session.update({
+        where: { id: sessionId },
+        data: { status: 'PUBLICACAO' }
       });
     }
 

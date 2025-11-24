@@ -310,13 +310,24 @@ export async function DELETE(
     });
 
     if (hasPublications > 0) {
-      // Verificar se a pauta atual está igual à última publicação
+      // Se já há publicações, verificar se a pauta atual está igual à última publicação
       const isEqual = await isAgendaEqualToLastPublication(sessionResource.sessionId);
 
       // Se estiver igual, status = PENDENTE; se diferente, status = PUBLICACAO
       await prismadb.session.update({
         where: { id: sessionResource.sessionId },
         data: { status: isEqual ? 'PENDENTE' : 'PUBLICACAO' }
+      });
+    } else {
+      // Se não há publicações, verificar quantos processos restam na sessão
+      const remainingResources = await prismadb.sessionResource.count({
+        where: { sessionId: sessionResource.sessionId }
+      });
+
+      // Se não há processos, status = PENDENTE; se há processos, status = PUBLICACAO
+      await prismadb.session.update({
+        where: { id: sessionResource.sessionId },
+        data: { status: remainingResources === 0 ? 'PENDENTE' : 'PUBLICACAO' }
       });
     }
 

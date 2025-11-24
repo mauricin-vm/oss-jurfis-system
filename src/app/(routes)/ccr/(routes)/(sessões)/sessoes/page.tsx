@@ -383,7 +383,7 @@ export default function SessoesPage() {
           <StatCard
             title="Pendente"
             value={pendingCount}
-            description="Pauta publicada"
+            description="Sessões pendentes"
             icon={Clock}
           />
           <StatCard

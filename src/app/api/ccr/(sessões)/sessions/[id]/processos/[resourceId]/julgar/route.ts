@@ -163,6 +163,31 @@ export async function GET(
       },
     });
 
+    // Buscar a primeira distribuição do relator (primeira vez que ele foi distributedTo)
+    let relatorDistributionDate: Date | null = null;
+    if (distribution?.firstDistribution) {
+      const firstRelatorDistribution = await prismadb.sessionDistribution.findFirst({
+        where: {
+          resourceId: sessionResource.resource.id,
+          distributedToId: distribution.firstDistribution.id,
+          isActive: true,
+        },
+        include: {
+          session: {
+            select: {
+              date: true,
+            },
+          },
+        },
+        orderBy: {
+          session: {
+            date: 'asc',
+          },
+        },
+      });
+      relatorDistributionDate = firstRelatorDistribution?.session.date || null;
+    }
+
     // Buscar dados dos revisores com suas distribuições
     let reviewers: Array<{
       id: string;
@@ -356,6 +381,7 @@ export async function GET(
       sessionResource,
       session: sessionData,
       distribution,
+      relatorDistributionDate,
       reviewers,
       distributedMemberIds: Array.from(distributedMemberIds),
       completedVotings,

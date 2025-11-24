@@ -24,10 +24,10 @@
 
 
 
+- testar presidente ser revisor (substituir presidente)
+- arrumar geração de texto para declarar apenas o que ocorreu na sessão (suspensão, diligencia e vista). Se for julgado, ele narra toda a história.
+- na aba de julgamento, ordenar por sessão asc
 
-- concluir resultado
-- pensar níveis de acesso na página de rseultado e votação
-- pensar em editar resultado (listar registros)
 
 
 
