@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface Session {
   id: string;
   sessionNumber: string;
+  agendaNumber: string | null;
   date: Date;
   startTime: string | null;
   endTime: string | null;

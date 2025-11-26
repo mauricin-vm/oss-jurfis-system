@@ -193,6 +193,7 @@ export async function PUT(
     const body = await req.json();
     const {
       sessionNumber,
+      agendaNumber,
       sessionDate,
       type,
       startTime,
@@ -289,6 +290,32 @@ export async function PUT(
     const [year_date, month, day] = sessionDate.split('-');
     const localDate = new Date(parseInt(year_date), parseInt(month) - 1, parseInt(day), 12, 0, 0);
 
+    // Processar número da pauta
+    let agendaData: {
+      agendaNumber: string | null;
+      agendaSequenceNumber: number | null;
+      agendaYear: number | null;
+    } = {
+      agendaNumber: null,
+      agendaSequenceNumber: null,
+      agendaYear: null,
+    };
+
+    if (agendaNumber && agendaNumber.trim()) {
+      const agendaNumberMatch = agendaNumber.match(/^(\d{4})\/(\d{4})$/);
+      if (!agendaNumberMatch) {
+        return new NextResponse(
+          'Formato do número da pauta inválido. Use o formato XXXX/YYYY',
+          { status: 400 }
+        );
+      }
+      agendaData = {
+        agendaNumber: agendaNumber.trim(),
+        agendaSequenceNumber: parseInt(agendaNumberMatch[1], 10),
+        agendaYear: parseInt(agendaNumberMatch[2], 10),
+      };
+    }
+
     const updatedSession = await prismadb.session.update({
       where: {
         id,
@@ -298,6 +325,7 @@ export async function PUT(
         sequenceNumber,
         year,
         ordinalNumber,
+        ...agendaData,
         date: localDate,
         type,
         startTime: startTime || null,

@@ -3,37 +3,45 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { MinutesTable } from './components/minutes-table';
+import { DecisionTable } from './components/decision-table';
 import { CCRPageWrapper } from '../../../components/ccr-page-wrapper';
 
-interface Minutes {
+interface Decision {
   id: string;
-  sessionNumber: string;
+  decisionNumber: string;
   sequenceNumber: number;
   year: number;
-  ordinalNumber: number;
-  type: string;
-  date: Date;
-  startTime: string | null;
-  endTime: string | null;
-  minutesStatus: string;
-  minutesFilePath: string | null;
-  administrativeMatters: string | null;
-  allResourcesHaveResults: boolean;
-  president: {
+  ementaTitle: string;
+  ementaBody: string;
+  votePath: string | null;
+  status: string;
+  decisionFilePath: string | null;
+  resource: {
     id: string;
-    name: string;
-  } | null;
-  _count?: {
-    members: number;
-    resources: number;
+    resourceNumber: string;
+    processNumber: string;
+    processName: string | null;
   };
+  publications: {
+    id: string;
+    publicationOrder: number;
+    publicationNumber: string;
+    publicationDate: Date;
+  }[];
+  createdByUser: {
+    id: string;
+    name: string | null;
+  };
+  _count: {
+    publications: number;
+  };
+  createdAt: Date;
 }
 
-export default function AtasPage() {
+export default function AcordaosPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [minutes, setMinutes] = useState<Minutes[]>([]);
+  const [decisions, setDecisions] = useState<Decision[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Verificar acesso
@@ -44,19 +52,19 @@ export default function AtasPage() {
   }, [session, router]);
 
   useEffect(() => {
-    fetchMinutes();
+    fetchDecisions();
   }, []);
 
-  const fetchMinutes = async () => {
+  const fetchDecisions = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/ccr/minutes');
+      const response = await fetch('/api/ccr/decisions');
       if (response.ok) {
         const data = await response.json();
-        setMinutes(data);
+        setDecisions(data);
       }
     } catch (error) {
-      console.error('Error fetching minutes:', error);
+      console.error('Error fetching decisions:', error);
     } finally {
       setLoading(false);
     }
@@ -73,11 +81,12 @@ export default function AtasPage() {
   }
 
   return (
-    <CCRPageWrapper title="Atas">
-      <MinutesTable
-        data={minutes}
+    <CCRPageWrapper title="Acórdãos">
+      <DecisionTable
+        data={decisions}
         loading={loading}
-        onRefresh={fetchMinutes}
+        onRefresh={fetchDecisions}
+        onNewDecision={() => router.push('/ccr/acordaos/novo')}
         userRole={session?.user?.role}
       />
     </CCRPageWrapper>

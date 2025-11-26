@@ -32,8 +32,15 @@ export async function GET(req: Request) {
         resources: {
           include: {
             resource: {
-              include: {
-                protocol: true,
+              select: {
+                id: true,
+                processNumber: true,
+                resourceNumber: true,
+                protocol: {
+                  select: {
+                    presenter: true,
+                  },
+                },
               },
             },
           },
@@ -145,6 +152,25 @@ export async function POST(req: Request) {
     // Criar data no horário local (meio-dia UTC evita problemas de timezone)
     const [year_date, month, day] = sessionDate.split('-');
     const localDate = new Date(parseInt(year_date), parseInt(month) - 1, parseInt(day), 12, 0, 0);
+    const agendaYear = parseInt(year_date, 10);
+
+    // Buscar o último agendaSequenceNumber para o ano da sessão
+    const lastAgendaOfYear = await prismadb.session.findFirst({
+      where: {
+        agendaYear: agendaYear,
+      },
+      orderBy: {
+        agendaSequenceNumber: 'desc',
+      },
+      select: {
+        agendaSequenceNumber: true,
+      },
+    });
+
+    const agendaSequenceNumber = lastAgendaOfYear?.agendaSequenceNumber
+      ? lastAgendaOfYear.agendaSequenceNumber + 1
+      : 1;
+    const agendaNumber = `${String(agendaSequenceNumber).padStart(4, '0')}/${agendaYear}`;
 
     const newSession = await prismadb.session.create({
       data: {
@@ -152,6 +178,9 @@ export async function POST(req: Request) {
         sequenceNumber,
         year,
         ordinalNumber,
+        agendaNumber,
+        agendaSequenceNumber,
+        agendaYear,
         date: localDate,
         type,
         startTime: startTime || null,

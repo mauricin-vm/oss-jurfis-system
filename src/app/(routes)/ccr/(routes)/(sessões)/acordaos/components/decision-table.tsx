@@ -28,72 +28,95 @@ import {
 } from "@/components/ui/select";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { cn } from "@/lib/utils";
-import { MoreHorizontal, Pencil, ChevronLeft, ChevronsLeft, ChevronRight, ChevronsRight, Filter, Search, Printer, FileText, Clock, CheckCircle } from 'lucide-react';
+import {
+  MoreHorizontal,
+  Pencil,
+  ChevronLeft,
+  ChevronsLeft,
+  ChevronRight,
+  ChevronsRight,
+  Plus,
+  Filter,
+  Search,
+  Clock,
+  CheckCircle,
+  RefreshCw,
+  Printer,
+  FileText,
+  Send
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { TooltipWrapper } from '@/components/ui/tooltip-wrapper';
-import { MinutesTableSkeleton } from './minutes-skeleton';
+import { DecisionTableSkeleton } from './decision-skeleton';
 import { toast } from 'sonner';
 
-interface Minutes {
+interface Decision {
   id: string;
-  sessionNumber: string;
+  decisionNumber: string;
   sequenceNumber: number;
   year: number;
-  ordinalNumber: number;
-  type: string;
-  date: Date;
-  startTime: string | null;
-  endTime: string | null;
-  minutesStatus: string;
-  minutesFilePath: string | null;
-  administrativeMatters: string | null;
-  allResourcesHaveResults: boolean;
-  president: {
+  ementaTitle: string;
+  ementaBody: string;
+  votePath: string | null;
+  status: string;
+  decisionFilePath: string | null;
+  resource: {
     id: string;
-    name: string;
-  } | null;
-  _count?: {
-    members: number;
-    resources: number;
+    resourceNumber: string;
+    processNumber: string;
+    processName: string | null;
   };
+  publications: {
+    id: string;
+    publicationOrder: number;
+    publicationNumber: string;
+    publicationDate: Date;
+  }[];
+  createdByUser: {
+    id: string;
+    name: string | null;
+  };
+  _count: {
+    publications: number;
+  };
+  createdAt: Date;
 }
 
-interface MinutesTableProps {
-  data: Minutes[];
+interface DecisionTableProps {
+  data: Decision[];
   loading: boolean;
   onRefresh: () => void;
+  onNewDecision: () => void;
   userRole?: string;
 }
 
-const sessionTypeLabels: Record<string, string> = {
-  ORDINARIA: 'Ordinária',
-  EXTRAORDINARIA: 'Extraordinária',
-};
-
 const statusLabels: Record<string, string> = {
   PENDENTE: 'Pendente',
-  GERADA: 'Gerada',
+  PUBLICADO: 'Publicado',
+  REPUBLICADO: 'Republicado',
 };
 
 const statusStyles: Record<string, string> = {
   PENDENTE: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
-  GERADA: 'bg-green-100 text-green-800 hover:bg-green-100',
+  PUBLICADO: 'bg-green-100 text-green-800 hover:bg-green-100',
+  REPUBLICADO: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
 };
 
 const statusIcons: Record<string, React.ReactNode> = {
   PENDENTE: <Clock className="h-3.5 w-3.5" />,
-  GERADA: <CheckCircle className="h-3.5 w-3.5" />,
+  PUBLICADO: <CheckCircle className="h-3.5 w-3.5" />,
+  REPUBLICADO: <RefreshCw className="h-3.5 w-3.5" />,
 };
 
-export function MinutesTable({ data, loading, onRefresh, userRole }: MinutesTableProps) {
+export function DecisionTable({ data, loading, onRefresh, onNewDecision, userRole }: DecisionTableProps) {
   const router = useRouter();
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [yearFilter, setYearFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [yearFilter, setYearFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -117,63 +140,35 @@ export function MinutesTable({ data, loading, onRefresh, userRole }: MinutesTabl
     setCurrentPage(1);
   };
 
-  const handlePrint = async (minutes: Minutes) => {
-    const hasResources = minutes._count?.resources && minutes._count.resources > 0;
-
-    // Validação: se tem processos em pauta, todos devem ter resultado
-    if (hasResources && !minutes.allResourcesHaveResults) {
-      toast.error('Não é possível imprimir a ata. Todos os processos em pauta devem ter resultado registrado.');
-      return;
+  const handleGenerate = async (decision: Decision) => {
+    // Atualizar status se necessário e abrir página de impressão
+    if (decision.status === 'PENDENTE') {
+      // Se pendente, apenas gera/imprime
+      window.open(`/ccr/acordaos/${decision.id}/imprimir`, '_blank');
+    } else if (decision.decisionFilePath) {
+      // Se já publicado e tem arquivo, abre o arquivo
+      window.open(decision.decisionFilePath, '_blank');
+    } else {
+      // Se publicado mas sem arquivo, abre página de impressão
+      window.open(`/ccr/acordaos/${decision.id}/imprimir`, '_blank');
     }
-
-    // Validação: se não tem processos em pauta, deve ter assunto administrativo preenchido
-    if (!hasResources && (!minutes.administrativeMatters || minutes.administrativeMatters.trim() === '')) {
-      toast.error('Não é possível imprimir a ata. O campo de assunto administrativo deve estar preenchido.');
-      return;
-    }
-
-    // Atualizar status da ata para GERADA (apenas se ainda não estiver)
-    if (minutes.minutesStatus !== 'GERADA') {
-      try {
-        const response = await fetch(`/api/ccr/minutes/${minutes.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ minutesStatus: 'GERADA' }),
-        });
-
-        if (!response.ok) {
-          toast.error('Erro ao atualizar status da ata');
-          return;
-        }
-
-        // Atualizar o estado local
-        onRefresh();
-      } catch (error) {
-        console.error('Error updating minutes status:', error);
-        toast.error('Erro ao atualizar status da ata');
-        return;
-      }
-    }
-
-    // Abrir página de impressão/visualização da ata
-    window.open(`/ccr/atas/${minutes.id}/imprimir`, '_blank');
   };
 
   // Obter anos únicos dos dados
-  const uniqueYears = Array.from(new Set(data.map(m => m.year))).sort((a, b) => b - a);
+  const uniqueYears = Array.from(new Set(data.map(d => d.year))).sort((a, b) => b - a);
 
   // Filtrar dados
-  const filteredData = data.filter((minutes) => {
-    const yearMatch = yearFilter === 'all' || minutes.year.toString() === yearFilter;
-    const statusMatch = statusFilter === 'all' || minutes.minutesStatus === statusFilter;
+  const filteredData = data.filter((decision) => {
+    const statusMatch = statusFilter === 'all' || decision.status === statusFilter;
+    const yearMatch = yearFilter === 'all' || decision.year.toString() === yearFilter;
 
-    // Busca por número da ata ou data (formato dd/MM/yyyy)
-    const formattedDate = format(new Date(minutes.date), 'dd/MM/yyyy', { locale: ptBR });
     const searchMatch = !searchQuery ||
-      minutes.sessionNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      formattedDate.includes(searchQuery);
+      decision.decisionNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      decision.resource.resourceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      decision.resource.processNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      decision.ementaTitle.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return yearMatch && statusMatch && searchMatch;
+    return statusMatch && yearMatch && searchMatch;
   });
 
   // Dados já vêm ordenados do backend
@@ -190,8 +185,16 @@ export function MinutesTable({ data, loading, onRefresh, userRole }: MinutesTabl
     setCurrentPage(1);
   }
 
+  // Contar por status
+  const statusCounts = {
+    all: data.length,
+    PENDENTE: data.filter(d => d.status === 'PENDENTE').length,
+    PUBLICADO: data.filter(d => d.status === 'PUBLICADO').length,
+    REPUBLICADO: data.filter(d => d.status === 'REPUBLICADO').length,
+  };
+
   if (loading) {
-    return <MinutesTableSkeleton />;
+    return <DecisionTableSkeleton />;
   }
 
   return (
@@ -210,7 +213,7 @@ export function MinutesTable({ data, loading, onRefresh, userRole }: MinutesTabl
               <Input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Buscar atas..."
+                placeholder="Buscar acórdãos..."
                 value={searchQuery}
                 onChange={handleSearchChange}
                 onBlur={handleSearchBlur}
@@ -219,7 +222,7 @@ export function MinutesTable({ data, loading, onRefresh, userRole }: MinutesTabl
                   isSearchExpanded ? "opacity-100 z-10" : "opacity-0 pointer-events-none"
                 )}
               />
-              <TooltipWrapper content="Buscar por número da ata ou data">
+              <TooltipWrapper content="Buscar por número do acórdão, recurso, processo ou ementa">
                 <Button
                   variant="outline"
                   size="sm"
@@ -274,7 +277,7 @@ export function MinutesTable({ data, loading, onRefresh, userRole }: MinutesTabl
 
               <div className="space-y-2">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Status da Ata
+                  Status
                 </label>
                 <Select
                   value={statusFilter}
@@ -285,13 +288,16 @@ export function MinutesTable({ data, loading, onRefresh, userRole }: MinutesTabl
                   </SelectTrigger>
                   <SelectContent className="rounded-md">
                     <SelectItem value="all" className="cursor-pointer h-9">
-                      Todos os status
+                      Todos ({statusCounts.all})
                     </SelectItem>
                     <SelectItem value="PENDENTE" className="cursor-pointer h-9">
-                      Pendente
+                      Pendente ({statusCounts.PENDENTE})
                     </SelectItem>
-                    <SelectItem value="GERADA" className="cursor-pointer h-9">
-                      Gerada
+                    <SelectItem value="PUBLICADO" className="cursor-pointer h-9">
+                      Publicado ({statusCounts.PUBLICADO})
+                    </SelectItem>
+                    <SelectItem value="REPUBLICADO" className="cursor-pointer h-9">
+                      Republicado ({statusCounts.REPUBLICADO})
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -300,67 +306,72 @@ export function MinutesTable({ data, loading, onRefresh, userRole }: MinutesTabl
 
             <div className="border-t p-3">
               <div className="text-xs text-muted-foreground text-center">
-                {filteredData.length} {filteredData.length === 1 ? 'ata' : 'atas'} encontrada{filteredData.length !== 1 ? 's' : ''}
+                {filteredData.length} {filteredData.length === 1 ? 'acórdão' : 'acórdãos'} encontrado{filteredData.length !== 1 ? 's' : ''}
               </div>
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <Button size="sm" onClick={onNewDecision} className="h-8 gap-2 cursor-pointer">
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Novo Acórdão</span>
+        </Button>
       </div>
 
       {/* Tabela */}
       {filteredData.length === 0 ? (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
           <div className="p-8 text-center">
-            <p className="text-muted-foreground">Nenhuma ata encontrada.</p>
-            <p className="text-sm text-muted-foreground mt-2">As atas são criadas automaticamente ao criar uma sessão.</p>
+            <p className="text-muted-foreground">Nenhum acórdão encontrado.</p>
+            <p className="text-sm text-muted-foreground mt-2">Clique em &quot;Novo Acórdão&quot; no menu lateral para adicionar.</p>
           </div>
         </div>
       ) : (
         <>
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
             <div className="relative w-full overflow-x-auto">
-              <Table className="min-w-[700px]">
+              <Table className="min-w-[800px]">
                 <TableHeader>
                   <TableRow className="bg-muted hover:bg-muted border-b">
-                    <TableHead className="font-semibold">Número da Ata</TableHead>
-                    <TableHead className="font-semibold">Data</TableHead>
-                    <TableHead className="font-semibold">Ordenação</TableHead>
-                    <TableHead className="font-semibold">Tipo</TableHead>
+                    <TableHead className="font-semibold">Número</TableHead>
+                    <TableHead className="font-semibold">Recurso</TableHead>
+                    <TableHead className="font-semibold">Processo</TableHead>
+                    <TableHead className="font-semibold">Ementa</TableHead>
                     <TableHead className="font-semibold">Status</TableHead>
                     <TableHead className="w-[70px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedData.map((minutes) => (
-                    <TableRow key={minutes.id} className="bg-white hover:bg-muted/40 min-h-[49px]">
+                  {paginatedData.map((decision) => (
+                    <TableRow key={decision.id} className="bg-white hover:bg-muted/40 min-h-[49px]">
                       <TableCell className="font-medium text-sm">
-                        {minutes.sessionNumber}
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {format(new Date(minutes.date), 'dd/MM/yyyy', { locale: ptBR })}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {minutes.ordinalNumber}ª {sessionTypeLabels[minutes.type] || minutes.type}
-                        </Badge>
+                        {decision.decisionNumber}
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">
-                          {minutes._count?.resources && minutes._count.resources > 0 ? 'Julgamento' : 'Administrativa'}
+                          {decision.resource.resourceNumber}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {decision.resource.processNumber}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-[250px] truncate text-sm text-muted-foreground">
+                          {decision.ementaTitle}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge
                           variant="secondary"
                           className={cn(
                             'inline-flex items-center gap-1.5',
-                            statusStyles[minutes.minutesStatus] || 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+                            statusStyles[decision.status] || 'bg-gray-100 text-gray-800 hover:bg-gray-100'
                           )}
                         >
-                          {statusIcons[minutes.minutesStatus]}
-                          {statusLabels[minutes.minutesStatus] || minutes.minutesStatus}
+                          {statusIcons[decision.status]}
+                          {statusLabels[decision.status] || decision.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -373,26 +384,35 @@ export function MinutesTable({ data, loading, onRefresh, userRole }: MinutesTabl
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => router.push(`/ccr/atas/${minutes.id}`)}
+                              onClick={() => router.push(`/ccr/acordaos/${decision.id}`)}
                               className="cursor-pointer h-9"
                             >
                               <Pencil className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handlePrint(minutes)}
+                              onClick={() => handleGenerate(decision)}
                               className="cursor-pointer h-9"
                             >
-                              <Printer className="mr-2 h-4 w-4" />
-                              Imprimir
+                              {decision.status === 'PENDENTE' ? (
+                                <>
+                                  <FileText className="mr-2 h-4 w-4" />
+                                  Gerar
+                                </>
+                              ) : (
+                                <>
+                                  <Printer className="mr-2 h-4 w-4" />
+                                  Imprimir
+                                </>
+                              )}
                             </DropdownMenuItem>
-                            {minutes.minutesFilePath && (
+                            {decision.status !== 'PENDENTE' && (
                               <DropdownMenuItem
-                                onClick={() => window.open(minutes.minutesFilePath!, '_blank')}
+                                onClick={() => router.push(`/ccr/acordaos/${decision.id}/publicar`)}
                                 className="cursor-pointer h-9"
                               >
-                                <FileText className="mr-2 h-4 w-4" />
-                                Ver Arquivo
+                                <Send className="mr-2 h-4 w-4" />
+                                {decision.status === 'PUBLICADO' ? 'Republicar' : 'Ver Publicações'}
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
@@ -456,7 +476,7 @@ export function MinutesTable({ data, loading, onRefresh, userRole }: MinutesTabl
 
               <div className="flex items-center gap-3 sm:gap-4">
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  Página {currentPage} de {totalPages}
+                  Página {currentPage} de {totalPages || 1}
                 </span>
                 <div className="flex items-center gap-1">
                   <TooltipWrapper content="Primeira página">
@@ -487,7 +507,7 @@ export function MinutesTable({ data, loading, onRefresh, userRole }: MinutesTabl
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
+                      disabled={currentPage === totalPages || totalPages === 0}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -498,7 +518,7 @@ export function MinutesTable({ data, loading, onRefresh, userRole }: MinutesTabl
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => setCurrentPage(totalPages)}
-                      disabled={currentPage === totalPages}
+                      disabled={currentPage === totalPages || totalPages === 0}
                     >
                       <ChevronsRight className="h-4 w-4" />
                     </Button>

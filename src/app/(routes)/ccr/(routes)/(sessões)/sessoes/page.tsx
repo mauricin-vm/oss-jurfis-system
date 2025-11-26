@@ -61,6 +61,7 @@ interface Session {
     resource: {
       id: string;
       processNumber: string;
+      resourceNumber: string;
       protocol: {
         presenter: string;
       };
@@ -147,11 +148,15 @@ export default function SessoesPage() {
       statusMatch = s.status === statusFilter;
     }
 
+    const searchLower = searchQuery.toLowerCase();
     const searchMatch =
       !searchQuery ||
-      s.sessionNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.president?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      new Date(s.date).toLocaleDateString('pt-BR').includes(searchQuery);
+      s.sessionNumber.toLowerCase().includes(searchLower) ||
+      new Date(s.date).toLocaleDateString('pt-BR').includes(searchQuery) ||
+      s.resources.some(r =>
+        r.resource.processNumber.toLowerCase().includes(searchLower) ||
+        r.resource.resourceNumber.toLowerCase().includes(searchLower)
+      );
 
     return statusMatch && searchMatch;
   });
@@ -276,7 +281,7 @@ export default function SessoesPage() {
                 <Input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Buscar sessões..."
+                  placeholder="Buscar..."
                   value={searchQuery}
                   onChange={handleSearchChange}
                   onBlur={handleSearchBlur}
@@ -285,7 +290,7 @@ export default function SessoesPage() {
                     isSearchExpanded ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'
                   )}
                 />
-                <TooltipWrapper content="Buscar por número da sessão, presidente ou data">
+                <TooltipWrapper content="Buscar por número da sessão, data, número do recurso ou número do processo">
                   <Button
                     variant="outline"
                     size="sm"

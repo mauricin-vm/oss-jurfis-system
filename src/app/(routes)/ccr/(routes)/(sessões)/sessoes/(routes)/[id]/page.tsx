@@ -20,7 +20,7 @@ import {
   PlayCircle,
   Newspaper,
   Blinds,
-  Briefcase,
+  MessageCircle,
   GripVertical,
   UserCheck,
   RotateCcw,
@@ -174,6 +174,7 @@ interface SessionDistribution {
 interface Session {
   id: string;
   sessionNumber: string;
+  agendaNumber: string | null;
   sequenceNumber: number;
   year: number;
   ordinalNumber: number;
@@ -1101,7 +1102,7 @@ export default function VisualizarSessaoPage() {
                             onClick={() => router.push(`/ccr/sessoes/${session.id}/assuntos-administrativos`)}
                             className="cursor-pointer"
                           >
-                            <Briefcase className="h-4 w-4" />
+                            <MessageCircle className="h-4 w-4" />
                           </Button>
                         </TooltipWrapper>
                         <TooltipWrapper content="Editar sessão">
@@ -1175,7 +1176,7 @@ export default function VisualizarSessaoPage() {
               <CardContent>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium mb-1.5">Número da Pauta</label>
+                    <label className="block text-sm font-medium mb-1.5">Número da Ata</label>
                     <p className="text-sm">{session.sessionNumber}</p>
                   </div>
                   <div>
@@ -1196,8 +1197,8 @@ export default function VisualizarSessaoPage() {
                     </Badge>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1.5">Número da Ata</label>
-                    <p className="text-sm">{session.minutes?.minutesNumber || '-'}</p>
+                    <label className="block text-sm font-medium mb-1.5">Número da Pauta</label>
+                    <p className="text-sm">{session.agendaNumber || '-'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Publicação</label>

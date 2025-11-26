@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 type SessionFormValues = {
   sessionNumber: string;
+  agendaNumber?: string;
   date: string;
   startTime?: string;
   endTime?: string;
@@ -55,6 +56,7 @@ export function SessionForm({ initialData }: SessionFormProps) {
   const form = useForm<SessionFormValues>({
     defaultValues: {
       sessionNumber: initialData?.sessionNumber || '',
+      agendaNumber: initialData?.agendaNumber || '',
       date: initialData?.date
         ? new Date(initialData.date).toISOString().split('T')[0]
         : '',
@@ -66,9 +68,9 @@ export function SessionForm({ initialData }: SessionFormProps) {
     },
   });
 
-  // Buscar próximo número de sessão
+  // Buscar próximo número de sessão e pauta
   useEffect(() => {
-    const fetchNextSessionNumber = async () => {
+    const fetchNextNumbers = async () => {
       // Só buscar se não houver initialData (criação de nova sessão)
       if (initialData) return;
 
@@ -81,25 +83,38 @@ export function SessionForm({ initialData }: SessionFormProps) {
           const sessions = await response.json();
 
           if (sessions.length > 0) {
-            // Usar o campo sequenceNumber diretamente
+            // Próximo número da sessão/ata
             const maxSequenceNumber = Math.max(...sessions.map((s: any) => s.sequenceNumber));
             const nextSequence = maxSequenceNumber + 1;
             const nextNumber = nextSequence.toString().padStart(4, '0');
             form.setValue('sessionNumber', `${nextNumber}/${currentYear}`);
+
+            // Próximo número da pauta (baseado em agendaSequenceNumber)
+            const sessionsWithAgenda = sessions.filter((s: any) => s.agendaSequenceNumber != null);
+            if (sessionsWithAgenda.length > 0) {
+              const maxAgendaSequence = Math.max(...sessionsWithAgenda.map((s: any) => s.agendaSequenceNumber));
+              const nextAgendaSequence = maxAgendaSequence + 1;
+              const nextAgendaNumber = nextAgendaSequence.toString().padStart(4, '0');
+              form.setValue('agendaNumber', `${nextAgendaNumber}/${currentYear}`);
+            } else {
+              // Primeira pauta do ano
+              form.setValue('agendaNumber', `0001/${currentYear}`);
+            }
           } else {
-            // Primeira sessão do ano
+            // Primeira sessão e pauta do ano
             form.setValue('sessionNumber', `0001/${currentYear}`);
+            form.setValue('agendaNumber', `0001/${currentYear}`);
           }
         }
       } catch (error) {
-        console.error('Error fetching next session number:', error);
-        // Não mostrar erro ao usuário, apenas deixar o campo vazio
+        console.error('Error fetching next numbers:', error);
+        // Não mostrar erro ao usuário, apenas deixar os campos vazios
       } finally {
         setLoadingNextNumber(false);
       }
     };
 
-    fetchNextSessionNumber();
+    fetchNextNumbers();
   }, [initialData, form]);
 
   // Buscar membros conselheiros ativos
@@ -158,6 +173,7 @@ export function SessionForm({ initialData }: SessionFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionNumber: data.sessionNumber.trim(),
+          agendaNumber: data.agendaNumber?.trim() || null,
           sessionDate: data.date,
           startTime: data.startTime?.trim() || null,
           endTime: data.endTime?.trim() || null,
@@ -236,7 +252,7 @@ export function SessionForm({ initialData }: SessionFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Linha 1: Número, Data e Tipo */}
+        {/* Linha 1: Número da Ata, Número da Pauta, Data */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField
             control={form.control}
@@ -244,7 +260,27 @@ export function SessionForm({ initialData }: SessionFormProps) {
             render={({ field }) => (
               <FormItem className="space-y-0">
                 <FormLabel className="block text-sm font-medium mb-1.5">
-                  Número da Sessão <span className="text-red-500">*</span>
+                  Número da Ata <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Ex: 0001/2025"
+                    className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="agendaNumber"
+            render={({ field }) => (
+              <FormItem className="space-y-0">
+                <FormLabel className="block text-sm font-medium mb-1.5">
+                  Número da Pauta
                 </FormLabel>
                 <FormControl>
                   <Input
@@ -277,7 +313,10 @@ export function SessionForm({ initialData }: SessionFormProps) {
               </FormItem>
             )}
           />
+        </div>
 
+        {/* Linha 2: Tipo de Sessão (1/3), Horários (1/3), Presidente (1/3) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField
             control={form.control}
             name="type"
@@ -307,49 +346,49 @@ export function SessionForm({ initialData }: SessionFormProps) {
               </FormItem>
             )}
           />
-        </div>
 
-        {/* Linha 2: Horário Início, Horário Término e Presidente */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FormField
-            control={form.control}
-            name="startTime"
-            render={({ field }) => (
-              <FormItem className="space-y-0">
-                <FormLabel className="block text-sm font-medium mb-1.5">
-                  Horário de Início
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="time"
-                    className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Horários lado a lado ocupando 1/3 */}
+          <div className="grid grid-cols-2 gap-3">
+            <FormField
+              control={form.control}
+              name="startTime"
+              render={({ field }) => (
+                <FormItem className="space-y-0">
+                  <FormLabel className="block text-sm font-medium mb-1.5">
+                    Horário de Início
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="time"
+                      className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="endTime"
-            render={({ field }) => (
-              <FormItem className="space-y-0">
-                <FormLabel className="block text-sm font-medium mb-1.5">
-                  Horário de Término
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="time"
-                    className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="endTime"
+              render={({ field }) => (
+                <FormItem className="space-y-0">
+                  <FormLabel className="block text-sm font-medium mb-1.5">
+                    Horário de Término
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="time"
+                      className="h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 transition-colors focus-visible:ring-0 focus-visible:ring-offset-0"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           <FormField
             control={form.control}

@@ -21,6 +21,7 @@ import {
   Plus,
   Phone,
   History,
+  Newspaper,
 } from 'lucide-react';
 
 export default function CCRLayout({ children }: { children: React.ReactNode }) {
@@ -83,7 +84,7 @@ export default function CCRLayout({ children }: { children: React.ReactNode }) {
           subItems: [
             { label: 'Consultar Sessões', href: '/ccr/sessoes' },
             { label: 'Atas', href: '/ccr/atas' },
-            { label: 'Acórdãos', href: '/ccr/sessoes/acordaos' },
+            { label: 'Acórdãos', href: '/ccr/acordaos' },
           ],
         },
         // Notificações - item único sem colapsar
@@ -168,14 +169,6 @@ export default function CCRLayout({ children }: { children: React.ReactNode }) {
           onClick: () => router.push('/ccr/sessoes/novo'),
         });
       }
-      // Se estiver na página de atas, adicionar botão "Nova Ata"
-      else if (pathname?.startsWith('/ccr/atas')) {
-        customActions.push({
-          label: 'Nova Ata',
-          icon: Plus,
-          onClick: () => router.push('/ccr/atas/novo'),
-        });
-      }
       // Se estiver na página de partes de um recurso
       else if (pathname?.match(/^\/ccr\/recursos\/[^/]+\/partes$/)) {
         const resourceId = pathname.split('/')[3];
@@ -203,6 +196,19 @@ export default function CCRLayout({ children }: { children: React.ReactNode }) {
             // Disparar evento customizado para o form carregar membros da última sessão
             window.dispatchEvent(new Event('loadLastSessionMembers'));
           },
+        });
+      }
+      // Se estiver na página de acórdãos, adicionar botões "Novo Acórdão" e "Publicação de Acórdão"
+      else if (pathname?.startsWith('/ccr/acordaos')) {
+        customActions.push({
+          label: 'Novo Acórdão',
+          icon: Plus,
+          onClick: () => router.push('/ccr/acordaos/novo'),
+        });
+        customActions.push({
+          label: 'Publicação de Acórdão',
+          icon: Newspaper,
+          onClick: () => router.push('/ccr/acordaos'),
         });
       }
 

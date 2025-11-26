@@ -32,11 +32,11 @@ model User {
   protocolsCreated     Protocol[]        @relation("ProtocolEmployee")
   tramitationsCreated  Tramitation[]     @relation("TramitationCreatedBy")
   sessionsCreated      Session[]         @relation("SessionCreatedBy")
-  minutesCreated       SessionMinutes[]  @relation("MinutesCreatedBy")
   notificationsCreated Notification[]    @relation("NotificationCreatedBy")
   documentsUploaded    Document[]        @relation("DocumentUploadedBy")
   publicationsCreated  Publication[]     @relation("PublicationCreatedBy")
   historyCreated       ResourceHistory[] @relation("HistoryCreatedBy")
+  decisionsCreated     Decision[]        @relation("DecisionCreatedBy")
 
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
@@ -295,11 +295,6 @@ model Resource {
   processName       String? // Nome/Descrição do processo
   attachedProcesses String[] @default([]) // Processos apensos
 
-  // Informações do acórdão (gerado após julgamento)
-  decisionNumber         String? @unique // "XXXX/YYYY"
-  decisionSequenceNumber Int? // XXXX
-  decisionYear           Int? // YYYY
-
   // Relacionamentos
   // Partes são acessadas via processNumber: Part.findMany({ where: { processNumber } })
   subjects       SubjectChildren[] // Assuntos do recurso (many-to-many com hierarquia)
@@ -318,8 +313,9 @@ model Resource {
   updatedAt           DateTime                    @updatedAt
   distributionRecords SessionDistributionRecord[] @relation("ResourceDistributionRecords")
 
+  decisions Decision[] // Acórdãos do recurso
+
   @@index([year, sequenceNumber])
-  @@index([decisionYear, decisionSequenceNumber])
   @@index([status])
   @@index([type])
   @@map("CCR_Resource")
@@ -570,6 +566,11 @@ model Session {
   year           Int // YYYY
   ordinalNumber  Int // Número sequencial contínuo por tipo (não reseta anualmente)
 
+  // Número da pauta (facultativo - para sessões com processos incluídos)
+  agendaNumber         String? // "XXXX/YYYY"
+  agendaSequenceNumber Int? // XXXX
+  agendaYear           Int? // YYYY
+
   date      DateTime
   startTime String? // Formato: "14:00"
   endTime   String? // Formato: "17:00"
@@ -583,10 +584,13 @@ model Session {
   observations          String? @db.Text
   administrativeMatters String? @db.Text
 
+  // Controle da ata
+  minutesStatus   MinutesStatus @default(PENDENTE) // Status da ata
+  minutesFilePath String? // Caminho do arquivo da ata
+
   resources     SessionResource[]
   members       SessionMember[] // Membros presentes na sessão
   distributions SessionDistribution[] @relation("DistributionsSessions")
-  minutes       SessionMinutes? // Ata da sessão (gerada após a sessão)
   publications  Publication[] // Publicações da pauta (type=SESSAO) e outros documentos
   sessionVotes  SessionVote[]         @relation("VotesInSession") // Votos individuais
   resultsJudged SessionResult[]       @relation("SessionResultsJudged") // Resultados julgados nesta sessão
@@ -767,9 +771,6 @@ model SessionDistribution {
   distributionOrder Int // Ordem na pauta
   isActive          Boolean @default(true)
 
-  // Relacionamento com atas
-  minutesDistributions SessionMinutesDistribution[] @relation("MinutesDistributions")
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -933,97 +934,11 @@ model SessionResult {
 }
 
 // ============================================
-// TABELA DE ATAS E RELACIONAMENTO
 // ============================================
-model SessionMinutes {
-  id String @id @default(uuid())
+// TABELA DE ACÓRDÃOS
+// ============================================
 
-  sessionId String?  @unique
-  session   Session? @relation(fields: [sessionId], references: [id])
-
-  minutesNumber  String @unique
-  sequenceNumber Int
-  year           Int
-
-  ordinalNumber Int
-  ordinalType   SessionType
-
-  presidentId String?
-  president   Member? @relation("MinutesPresident", fields: [presidentId], references: [id])
-
-  endTime String
-
-  administrativeMatters String? @db.Text
-
-  distributions  SessionMinutesDistribution[]
-  presentMembers SessionMinutesMember[]
-  absentMembers  SessionMinutesAbsence[]
-
-  createdBy     String
-  createdByUser User     @relation("MinutesCreatedBy", fields: [createdBy], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([year, sequenceNumber])
-  @@index([ordinalType, ordinalNumber])
-  @@index([sessionId])
-  @@index([presidentId])
-  @@map("CCR_SessionMinutes")
-  @@schema("jurfis")
-}
-
-model SessionMinutesDistribution {
-  id             String              @id @default(uuid())
-  minutesId      String
-  minutes        SessionMinutes      @relation(fields: [minutesId], references: [id], onDelete: Cascade)
-  distributionId String
-  distribution   SessionDistribution @relation("MinutesDistributions", fields: [distributionId], references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@unique([minutesId, distributionId])
-  @@index([minutesId])
-  @@index([distributionId])
-  @@map("CCR_SessionMinutesDistribution")
-  @@schema("jurfis")
-}
-
-model SessionMinutesMember {
-  id        String         @id @default(uuid())
-  minutesId String
-  minutes   SessionMinutes @relation(fields: [minutesId], references: [id], onDelete: Cascade)
-  memberId  String
-  member    Member         @relation("MinutesMembersPresent", fields: [memberId], references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@unique([minutesId, memberId])
-  @@index([minutesId])
-  @@index([memberId])
-  @@map("CCR_SessionMinutesMember")
-  @@schema("jurfis")
-}
-
-model SessionMinutesAbsence {
-  id        String         @id @default(uuid())
-  minutesId String
-  minutes   SessionMinutes @relation(fields: [minutesId], references: [id], onDelete: Cascade)
-  memberId  String
-  member    Member         @relation("MinutesAbsences", fields: [memberId], references: [id])
-
-  isJustified   Boolean @default(false)
-  justification String? @db.Text
-
-  createdAt DateTime @default(now())
-
-  @@unique([minutesId, memberId])
-  @@index([minutesId])
-  @@index([memberId])
-  @@index([isJustified])
-  @@map("CCR_SessionMinutesAbsence")
-  @@schema("jurfis")
-}
-
+// ============================================
 // ============================================
 // TABELA DE NOTIFICAÇÕES
 // ============================================
@@ -1202,9 +1117,6 @@ model Member {
   sessionResourceViewRequests SessionResource[]        @relation("SessionResourceViewRequests")
   sessionResourceAbsences     SessionResourceAbsence[] @relation("SessionResourceAbsences")
   distributionsAsFirst        SessionDistribution[]    @relation("DistributionFirstMember")
-  minutesAsPresident          SessionMinutes[]         @relation("MinutesPresident")
-  minutesPresent              SessionMinutesMember[]   @relation("MinutesMembersPresent")
-  minutesAbsences             SessionMinutesAbsence[]  @relation("MinutesAbsences")
 
   // Novos relacionamentos
   sessionVotes      SessionVote[]   @relation("MemberSessionVotes")
@@ -1250,8 +1162,86 @@ model Sector {
 }
 
 // ============================================
+// TABELA DE ACÓRDÃOS
+// ============================================
+model Decision {
+  id             String @id @default(uuid())
+  decisionNumber String @unique // "XXXX/YYYY"
+  sequenceNumber Int // XXXX
+  year           Int // YYYY (ano do julgamento)
+
+  // Relacionamento com o recurso
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  // Conteúdo do acórdão
+  ementaTitle String  @db.Text // Título da ementa
+  ementaBody  String  @db.Text // Corpo da ementa
+  votePath    String? // Caminho do voto anexado
+
+  // Status do acórdão (baseado nas publicações)
+  status DecisionStatus @default(PENDENTE)
+
+  // Arquivo do acórdão gerado
+  decisionFilePath String? // Caminho do arquivo do acórdão
+
+  // Publicações do acórdão (histórico)
+  publications DecisionPublication[]
+
+  // Auditoria
+  createdBy     String
+  createdByUser User     @relation("DecisionCreatedBy", fields: [createdBy], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([resourceId])
+  @@index([year, sequenceNumber])
+  @@index([status])
+  @@map("CCR_Decision")
+  @@schema("jurfis")
+}
+
+// Tabela de publicações do acórdão (histórico de publicações/republicações)
+model DecisionPublication {
+  id         String   @id @default(uuid())
+  decisionId String
+  decision   Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  // Número sequencial da publicação (1 = primeira, 2 = republicação, etc.)
+  publicationOrder Int
+
+  // Dados da publicação
+  publicationNumber String // Número da publicação no diário oficial
+  publicationDate   DateTime // Data da publicação
+
+  // Snapshot do conteúdo no momento da publicação (para histórico)
+  ementaTitleSnapshot String @db.Text // Título da ementa no momento da publicação
+  ementaBodySnapshot  String @db.Text // Corpo da ementa no momento da publicação
+
+  // Motivo da republicação (apenas para publicationOrder > 1)
+  republishReason String? @db.Text
+
+  // Auditoria
+  createdAt DateTime @default(now())
+
+  @@unique([decisionId, publicationOrder])
+  @@index([decisionId])
+  @@index([publicationDate])
+  @@map("CCR_DecisionPublication")
+  @@schema("jurfis")
+}
+
+// ============================================
 // ENUMS
 // ============================================
+enum DecisionStatus {
+  PENDENTE // Acórdão criado, ainda não publicado
+  PUBLICADO // Acórdão publicado
+  REPUBLICADO // Acórdão teve republicação
+
+  @@schema("jurfis")
+}
+
 enum PartRole {
   REQUERENTE
   PATRONO
@@ -1380,6 +1370,13 @@ enum SessionStatus {
   PENDENTE // Pauta publicada, aguardando sessão e julgamentos
   CONCLUIDA // Sessão finalizada
   CANCELADA // Sessão cancelada
+
+  @@schema("jurfis")
+}
+
+enum MinutesStatus {
+  PENDENTE // Ata pendente de geração
+  GERADA // Ata gerada
 
   @@schema("jurfis")
 }
